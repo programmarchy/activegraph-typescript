@@ -751,6 +751,24 @@ export class Runtime {
       ...(opts.budget !== undefined ? { budget: opts.budget } : {}),
     });
 
+    // Requeue events whose behaviors never fired during the recording
+    // (e.g. the original run was budget-exhausted mid-dispatch).
+    // Identify the set of triggering event ids that DO have a
+    // behavior.started referencing them, then re-queue any non-meta,
+    // non-graph-mutation event NOT in that set.
+    const firedOn = new Set<string>();
+    for (const e of events) {
+      if (e.type === "behavior.started" || e.type === "relation_behavior.started") {
+        if (e.causedBy !== null) firedOn.add(e.causedBy);
+      }
+    }
+    for (const e of events) {
+      if (isRuntimeMetaEvent(e.type)) continue;
+      if (GRAPH_MUTATION_TYPES.has(e.type)) continue;
+      if (firedOn.has(e.id)) continue;
+      runtime.queue.push(e);
+    }
+
     if (opts.strict === true) {
       await verifyReplay(events, opts.behaviors ?? [...getRegistry()]);
     }

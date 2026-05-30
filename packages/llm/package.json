@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/llm",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "LLMProvider interface, RecordedLLMProvider, prompt construction, parsing, cache, defineLLMBehavior.",
   "type": "module",
   "main": "./dist/index.js",

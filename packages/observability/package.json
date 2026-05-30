@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/observability",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "Structured logging (pino), metrics (prom-client), runtime status, migration report.",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/store-memory": "workspace:1.0.5-alpha.0",
+    "@activegraph/store-memory": "workspace:1.0.5",
     "pino": "^10.3.1",
     "prom-client": "^15.1.3"
   }

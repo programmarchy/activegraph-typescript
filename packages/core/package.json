@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/core",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "Core data layer: Graph, Object, Relation, Event, Patch, View, Frame, Policy, Clock, IDGen, error hierarchy, trace.",
   "type": "module",
   "main": "./dist/index.js",

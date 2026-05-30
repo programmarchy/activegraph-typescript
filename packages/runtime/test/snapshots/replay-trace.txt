@@ -1,0 +1,12 @@
+[replay.event]            evt_001 goal.created "record"
+[replay.event]            evt_002 behavior.started noop
+[replay.event]            evt_003 object.created task#1 "x"
+[replay.event]            evt_004 behavior.completed noop
+[replay.event]            evt_005 runtime.idle
+[replay.complete]         5 events replayed, graph reconstructed
+[runtime.idle]            ready to resume
+[goal.created]            user: "continue"
+[behavior.started]        noop
+[object.created]          task#2 "x"
+[behavior.completed]      noop
+[runtime.idle]            queue empty, budget remaining

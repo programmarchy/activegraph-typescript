@@ -1,6 +1,6 @@
 {
   "name": "activegraph",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "Active Graph: event-sourced reactive graph runtime. Umbrella package re-exporting core+runtime+store-memory+store-sqlite+packs+pack-diligence+cli.",
   "type": "module",
   "main": "./dist/index.js",

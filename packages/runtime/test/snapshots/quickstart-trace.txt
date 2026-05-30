@@ -1,0 +1,16 @@
+[goal.created]            user: "Evaluate this startup idea"
+[behavior.started]        planner
+[object.created]          task#1 "Research" (open)
+[object.created]          task#2 "Draft memo" (blocked)
+[relation.created]        task#1 --depends_on--> task#2
+[behavior.completed]      planner (2 objects, 1 relation)
+[behavior.started]        researcher
+[object.created]          claim#3 "Market early but growing."
+[event.emitted]           task.completed task_id=task#1
+[behavior.completed]      researcher
+[behavior.started]        researcher
+[behavior.completed]      researcher
+[relation_behavior.started] unblock  (matched task.completed on depends_on edge)
+[patch.applied]           task#2 status: blocked -> open
+[behavior.completed]      unblock
+[runtime.idle]            queue empty, budget remaining

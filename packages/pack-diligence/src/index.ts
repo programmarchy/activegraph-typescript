@@ -91,7 +91,7 @@ export const MemoSchema = z.object({
 
 export const diligencePack: Pack = definePack({
   name: "diligence",
-  version: "1.0.5-alpha.0",
+  version: "1.0.5",
   description:
     "Investment-diligence reference pack: companies, documents, claims, evidence, contradictions, risks, memos.",
   objectTypes: [

@@ -134,12 +134,21 @@ importers:
         specifier: workspace:1.0.5-alpha.0
         version: link:../tools
     devDependencies:
+      '@activegraph/pack-diligence':
+        specifier: workspace:1.0.5-alpha.0
+        version: link:../pack-diligence
+      '@activegraph/packs':
+        specifier: workspace:1.0.5-alpha.0
+        version: link:../packs
       '@activegraph/store-memory':
         specifier: workspace:1.0.5-alpha.0
         version: link:../store-memory
       '@activegraph/store-sqlite':
         specifier: workspace:1.0.5-alpha.0
         version: link:../store-sqlite
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
 
   packages/store-memory:
     dependencies:

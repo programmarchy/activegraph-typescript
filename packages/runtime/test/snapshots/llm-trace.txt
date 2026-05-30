@@ -1,0 +1,6 @@
+[goal.created]            user: "summarize the report"
+[behavior.started]        summarizer
+[llm.requested]           evt_003  summarizer  model=recorded tokens_in~39
+[llm.responded]           evt_004  summarizer  tokens_in=120 tokens_out=14 cost=$0.002 latency=0.3s
+[behavior.completed]      summarizer
+[runtime.idle]            queue empty, budget remaining

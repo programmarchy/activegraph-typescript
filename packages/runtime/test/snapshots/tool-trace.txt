@@ -1,0 +1,6 @@
+[goal.created]            user: "pull"
+[behavior.started]        puller
+[tool.requested]          evt_003  puller  tool=fetch args_hash=2a0dd14e deterministic=true
+[tool.responded]          evt_004  puller  tool=fetch latency=0.0s
+[behavior.completed]      puller
+[runtime.idle]            queue empty, budget remaining

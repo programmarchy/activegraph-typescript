@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/runtime",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "Runtime, scheduler, queue, pattern engine, defineBehavior / defineRelationBehavior, replay, fork-and-diff.",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,11 +30,14 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/llm": "workspace:1.0.5-alpha.0",
-    "@activegraph/tools": "workspace:1.0.5-alpha.0"
+    "@activegraph/llm": "workspace:1.0.5",
+    "@activegraph/tools": "workspace:1.0.5"
   },
   "devDependencies": {
-    "@activegraph/store-memory": "workspace:1.0.5-alpha.0",
-    "@activegraph/store-sqlite": "workspace:1.0.5-alpha.0"
+    "@activegraph/pack-diligence": "workspace:1.0.5",
+    "@activegraph/packs": "workspace:1.0.5",
+    "@activegraph/store-memory": "workspace:1.0.5",
+    "@activegraph/store-sqlite": "workspace:1.0.5",
+    "zod": "^4.4.3"
   }
 }

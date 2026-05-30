@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/llm-openai",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "OpenAI provider implementation.",
   "type": "module",
   "main": "./dist/index.js",

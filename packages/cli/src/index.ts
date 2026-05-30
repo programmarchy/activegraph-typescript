@@ -26,7 +26,7 @@ import { InMemoryEventStore } from "@activegraph/store-memory";
 
 import { openStore } from "./store-url.js";
 
-export const VERSION = "1.0.5-alpha.0";
+export const VERSION = "1.0.5";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const program = new Command();

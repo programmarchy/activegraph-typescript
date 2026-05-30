@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/cli",
-  "version": "1.0.5-alpha.0",
+  "version": "1.0.5",
   "description": "activegraph CLI (commander). bin: activegraph.",
   "type": "module",
   "main": "./dist/index.js",
@@ -34,11 +34,11 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/observability": "workspace:1.0.5-alpha.0",
-    "@activegraph/packs": "workspace:1.0.5-alpha.0",
+    "@activegraph/observability": "workspace:1.0.5",
+    "@activegraph/packs": "workspace:1.0.5",
     "@activegraph/runtime": "workspace:^",
     "@activegraph/store-memory": "workspace:^",
-    "@activegraph/store-sqlite": "workspace:1.0.5-alpha.0",
+    "@activegraph/store-sqlite": "workspace:1.0.5",
     "commander": "^15.0.0"
   }
 }

@@ -71,7 +71,7 @@ export async function scaffoldPack(opts: ScaffoldOptions): Promise<ScaffoldResul
           test: "vitest run",
         },
         dependencies: {
-          "@activegraph/packs": "^1.0.5-alpha.0",
+          "@activegraph/packs": "^1.0.5",
           zod: "^4.0.0",
         },
         devDependencies: {
