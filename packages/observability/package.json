@@ -29,6 +29,9 @@
     "node": ">=20.10.0"
   },
   "dependencies": {
-    "@activegraph/core": "workspace:^"
+    "@activegraph/core": "workspace:^",
+    "@activegraph/store-memory": "workspace:1.0.5-alpha.0",
+    "pino": "^10.3.1",
+    "prom-client": "^15.1.3"
   }
 }
