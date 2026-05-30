@@ -44,6 +44,9 @@ export type {
   LLMDispatchResult,
 } from "./llm-dispatch.js";
 
+export { ToolCache, dispatchTool, hashArgs } from "./tool-dispatch.js";
+export type { ToolDispatchOptions, ToolDispatchResult } from "./tool-dispatch.js";
+
 export {
   Pattern,
   PatternMatcher,

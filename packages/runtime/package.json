@@ -30,7 +30,8 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/llm": "workspace:1.0.5-alpha.0"
+    "@activegraph/llm": "workspace:1.0.5-alpha.0",
+    "@activegraph/tools": "workspace:1.0.5-alpha.0"
   },
   "devDependencies": {
     "@activegraph/store-memory": "workspace:1.0.5-alpha.0"

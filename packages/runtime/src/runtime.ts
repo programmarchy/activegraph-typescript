@@ -21,6 +21,8 @@ import {
 } from "@activegraph/core";
 
 import type { LLMProvider } from "@activegraph/llm";
+import type { Tool, ToolResult } from "@activegraph/tools";
+import { getToolRegistry, UnknownToolError } from "@activegraph/tools";
 
 import type {
   AnyBehavior,
@@ -39,6 +41,7 @@ import {
 } from "./errors.js";
 import { type LLMCache, dispatchLLMBehavior } from "./llm-dispatch.js";
 import type { MatchHandle } from "./patterns.js";
+import { type ToolCache, dispatchTool } from "./tool-dispatch.js";
 import { buildView } from "./view-builder.js";
 
 export interface RuntimeOptions {
@@ -61,6 +64,13 @@ export interface RuntimeOptions {
    * use this to avoid re-billing for identical prompts.
    */
   llmCache?: LLMCache;
+  /**
+   * Tools available to ctx.callTool(). Defaults to the global tool
+   * registry; pass an explicit list to scope.
+   */
+  tools?: Tool[];
+  /** Optional pre-populated tool cache for deterministic tools. */
+  toolCache?: ToolCache;
 }
 
 export interface ForkOptions {
@@ -226,6 +236,8 @@ export class Runtime {
   readonly behaviors: AnyBehavior[];
   readonly llmProvider: LLMProvider | null;
   readonly llmCache: LLMCache | null;
+  readonly tools: Tool[];
+  readonly toolCache: ToolCache | null;
   frame: Frame | null;
 
   private queue: Event[] = [];
@@ -253,6 +265,8 @@ export class Runtime {
     this.frame = opts.frame ?? null;
     this.llmProvider = opts.llmProvider ?? null;
     this.llmCache = opts.llmCache ?? null;
+    this.tools = opts.tools ?? [...getToolRegistry()];
+    this.toolCache = opts.toolCache ?? null;
     if (opts.store) graph.attachStore(opts.store);
     this.installListener();
   }
@@ -394,6 +408,30 @@ export class Runtime {
             timestamp: self.graph.clock.now(),
           }),
         );
+      },
+      async callTool<Input, Output>(name: string, args: Input): Promise<ToolResult<Output>> {
+        const tool = self.tools.find((t) => t.name === name);
+        if (tool === undefined) {
+          throw new UnknownToolError(`unknown tool: '${name}'`, {
+            whatFailed: `ctx.callTool('${name}', ...) was called from behavior '${behavior.name}', but no tool with that name is registered on this Runtime.`,
+            why: "Tools must be registered via defineTool() and either included in the global registry or passed explicitly via Runtime's `tools` option.",
+            howToFix: `Register the tool with defineTool({ name: '${name}', handler: ... }) before constructing the Runtime, or pass it explicitly.`,
+            context: { tool_name: name, behavior: behavior.name },
+          });
+        }
+        const { result } = await dispatchTool({
+          graph: self.graph,
+          tool,
+          args,
+          behaviorName: behavior.name,
+          triggeringEvent: event,
+          cache: self.toolCache,
+          budget: self.budget,
+          frameId: self.frame?.id ?? null,
+          clockNow: () => self.graph.clock.now(),
+          eventId: () => self.graph.ids.event(),
+        });
+        return result as ToolResult<Output>;
       },
     };
   }
