@@ -30,5 +30,8 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@activegraph/store-memory": "workspace:1.0.5-alpha.0"
   }
 }

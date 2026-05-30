@@ -28,7 +28,7 @@ export { Budget } from "./budget.js";
 export type { BudgetLimits } from "./budget.js";
 
 export { Runtime } from "./runtime.js";
-export type { RuntimeOptions } from "./runtime.js";
+export type { RuntimeOptions, ForkOptions, LoadOptions, ReplayableStore } from "./runtime.js";
 
 export {
   Pattern,

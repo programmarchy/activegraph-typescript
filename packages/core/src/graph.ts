@@ -77,6 +77,14 @@ export class Graph {
   readonly clock: Clock;
   readonly runId: string;
 
+  /**
+   * Fork lineage. Set on the fork's graph by Runtime.fork(); null on a
+   * root run. Persisted alongside the run record by stores that track it.
+   */
+  parentRunId: string | null = null;
+  forkedAtEventId: string | null = null;
+  label: string | null = null;
+
   /** @internal */ readonly _objects = new Map<string, ObjectNode>();
   /** @internal */ readonly _relations = new Map<string, Relation>();
   /** @internal */ readonly _patches = new Map<string, Patch>();

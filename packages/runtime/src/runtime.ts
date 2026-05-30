@@ -13,6 +13,7 @@ import {
   type Event,
   type Frame,
   Graph,
+  IDGen,
   Trace,
   View,
   makeEvent,
@@ -28,7 +29,12 @@ import type {
 import { getRegistry } from "./behaviors.js";
 import { Budget, type BudgetLimits } from "./budget.js";
 import type { RuntimeContext } from "./context.js";
-import { BehaviorFailure, InvalidArgumentType } from "./errors.js";
+import {
+  BehaviorFailure,
+  IncompatibleRuntimeState,
+  InvalidArgumentType,
+  ReplayDivergenceError,
+} from "./errors.js";
 import type { MatchHandle } from "./patterns.js";
 import { buildView } from "./view-builder.js";
 
@@ -42,6 +48,34 @@ export interface RuntimeOptions {
    * event is appended to the store. Optional.
    */
   store?: { append: (event: Event) => void | Promise<void> } | null;
+}
+
+export interface ForkOptions {
+  /** Optional human-readable label for the fork. */
+  label?: string;
+  /** Optional explicit run id; defaults to a fresh ULID. */
+  runId?: string;
+  /** Override the behavior list on the fork. Defaults to the parent's. */
+  behaviors?: AnyBehavior[];
+}
+
+export interface ReplayableStore {
+  readonly runId: string;
+  iterEvents(): AsyncIterable<Event> | Iterable<Event>;
+  append(event: Event): void | Promise<void>;
+}
+
+export interface LoadOptions {
+  /**
+   * Strict replay: re-fire behaviors from the seed events (events with
+   * no causedBy) and verify the (id, type) stream of the generated
+   * events matches the recorded log. Throws ReplayDivergenceError on
+   * the first mismatch.
+   */
+  strict?: boolean;
+  behaviors?: AnyBehavior[];
+  frame?: Frame;
+  budget?: BudgetLimits | Budget;
 }
 
 interface ScheduledEntry {
@@ -73,6 +107,104 @@ function isRuntimeMetaEvent(type: string): boolean {
     if (type.startsWith(p)) return true;
   }
   return false;
+}
+
+/**
+ * Re-fire behaviors from the recorded seed events into a fresh
+ * runtime and verify the resulting (id, type) stream matches. Cheapest
+ * correctness check the framework has — a behavior that quietly
+ * changes its output shape between runs gets caught here.
+ *
+ * Compares ids AND types, since the IDGen is reseeded to start from
+ * the recorded seed (so a re-run that produces the same events also
+ * produces the same ids by construction).
+ */
+/**
+ * Graph-mutation event types emitted by Graph.addObject/addRelation/
+ * patchObject/etc. These can have `causedBy: null` when emitted directly
+ * by the user (outside a behavior) but they aren't "seed" events for
+ * replay purposes — they're projections of mutations. Seeds are external
+ * stimuli the runtime treats as input: goal.created and custom user
+ * events without causedBy.
+ */
+const GRAPH_MUTATION_TYPES = new Set([
+  "object.created",
+  "object.removed",
+  "relation.created",
+  "relation.removed",
+  "patch.proposed",
+  "patch.applied",
+  "patch.rejected",
+]);
+
+async function verifyReplay(recorded: Event[], behaviors: AnyBehavior[]): Promise<void> {
+  const seeds = recorded.filter(
+    (e) =>
+      e.causedBy === null &&
+      !isRuntimeMetaEvent(e.type) &&
+      !GRAPH_MUTATION_TYPES.has(e.type),
+  );
+  if (seeds.length === 0) return;
+
+  const fresh = new Graph({ ids: new IDGen() });
+  const rt = new Runtime(fresh, { behaviors });
+  // Replay seed events into the new graph as live events so the
+  // listener queues them and dispatch runs.
+  for (const seed of seeds) {
+    fresh.emit(
+      makeEvent({
+        id: fresh.ids.event(),
+        type: seed.type,
+        payload: seed.payload,
+        actor: seed.actor,
+        frameId: seed.frameId,
+        causedBy: null,
+        timestamp: seed.timestamp,
+      }),
+    );
+  }
+  await rt.drain();
+
+  // Compare the non-lifecycle event-type streams. Lifecycle events
+  // (behavior.*, relation_behavior.*, runtime.*) are infrastructure
+  // and not part of the audit-trail contract.
+  const isReplayLifecycle = (t: string): boolean =>
+    t.startsWith("behavior.") || t.startsWith("relation_behavior.") || t.startsWith("runtime.");
+  const recordedTypes = recorded.filter((e) => !isReplayLifecycle(e.type)).map((e) => e.type);
+  const liveTypes = fresh.events.filter((e) => !isReplayLifecycle(e.type)).map((e) => e.type);
+
+  const len = Math.min(recordedTypes.length, liveTypes.length);
+  for (let i = 0; i < len; i++) {
+    if (recordedTypes[i] !== liveTypes[i]) {
+      throw new ReplayDivergenceError(
+        `replay diverged at event index ${i}: recorded '${recordedTypes[i]}', re-run produced '${liveTypes[i]}'`,
+        {
+          whatFailed: `Strict replay re-fired behaviors from the seed events. At event index ${i} the re-run produced '${liveTypes[i]}' but the recorded log has '${recordedTypes[i]}'.`,
+          why: "Strict replay protects the audit-trail guarantee. A behavior that produces different events on re-run breaks every downstream consumer that relies on the recorded log being faithful — the trace audit, the causal chain walk, the fork primitive.",
+          howToFix:
+            "Either the recorded log is stale (the behavior was changed in a way that altered its output) or the behavior is non-deterministic. Re-record the log if the behavior change was intended; otherwise mark the LLM/tool behavior as `deterministic: false` to suppress strict replay for it.",
+          context: {
+            index: i,
+            recorded_type: recordedTypes[i],
+            live_type: liveTypes[i],
+            recorded_count: recordedTypes.length,
+            live_count: liveTypes.length,
+          },
+        },
+      );
+    }
+  }
+  if (recordedTypes.length !== liveTypes.length) {
+    throw new ReplayDivergenceError(
+      `replay diverged in length: recorded ${recordedTypes.length} events, re-run produced ${liveTypes.length}`,
+      {
+        whatFailed: `Strict replay produced ${liveTypes.length} events but the recorded log has ${recordedTypes.length}.`,
+        why: "A different number of events means either a behavior re-ran differently or a behavior that should have fired didn't (or vice versa).",
+        howToFix: "Inspect the divergence point. If the behavior set changed, re-record the log.",
+        context: { recorded_count: recordedTypes.length, live_count: liveTypes.length },
+      },
+    );
+  }
 }
 
 export class Runtime {
@@ -477,6 +609,102 @@ export class Runtime {
     );
     this.queue.length = 0;
     this.delayed.length = 0;
+  }
+
+  // --- load / replay ----
+
+  /**
+   * Open `store`, replay its events into a fresh Graph, return a
+   * Runtime wired to continue from where the log left off.
+   *
+   * `strict: true` re-fires every behavior from the seed events
+   * (events with no causedBy) and compares the resulting event-type
+   * stream against the recorded log. On the first mismatch raises
+   * ReplayDivergenceError. Cheapest correctness check the framework
+   * has — a behavior that quietly changes its output shape between
+   * runs gets caught here.
+   *
+   * Without `strict`, no behavior re-fires; the graph state is
+   * reconstructed by projecting the recorded events. The returned
+   * Runtime is ready for `runUntilIdle()` to continue.
+   */
+  static async load(store: ReplayableStore, opts: LoadOptions = {}): Promise<Runtime> {
+    const events: Event[] = [];
+    for await (const ev of store.iterEvents() as AsyncIterable<Event>) events.push(ev);
+
+    const graph = new Graph({
+      ids: new IDGen(),
+      runId: store.runId,
+    });
+    for (const ev of events) graph.replayEvent(ev);
+    graph.ids.reseedFromEvents(events);
+    graph.attachStore(store);
+
+    const runtime = new Runtime(graph, {
+      ...(opts.behaviors !== undefined ? { behaviors: opts.behaviors } : {}),
+      ...(opts.frame !== undefined ? { frame: opts.frame } : {}),
+      ...(opts.budget !== undefined ? { budget: opts.budget } : {}),
+    });
+
+    if (opts.strict === true) {
+      await verifyReplay(events, opts.behaviors ?? [...getRegistry()]);
+    }
+
+    return runtime;
+  }
+
+  // --- fork ----
+
+  /**
+   * Branch this run at `atEventId` into an independent new run.
+   *
+   * Copies the parent's event log up to and including `atEventId` into a
+   * fresh Graph (replaying events via Graph.replayEvent — no listeners
+   * fire, no behaviors re-run), then returns a new Runtime over that
+   * Graph. The new Graph carries the fork lineage in `parentRunId` /
+   * `forkedAtEventId` provenance.
+   *
+   * The new Runtime starts fresh: empty queue, empty budget, current
+   * frame inherited. Behaviors come from the parent's explicit list
+   * (when provided) or the global registry, matching the parent.
+   *
+   * In TS the operation works against any in-memory event log — Python
+   * required SQLite for transactional copy semantics; TS replays from
+   * `graph.events` directly so it works with any backend.
+   */
+  fork(atEventId: string, opts: ForkOptions = {}): Runtime {
+    const cutIndex = this.graph.events.findIndex((e) => e.id === atEventId);
+    if (cutIndex === -1) {
+      throw new IncompatibleRuntimeState(
+        `runtime.fork(atEventId='${atEventId}') — no event with that id in this run`,
+        {
+          whatFailed: `fork() requires an event id that exists in this runtime's event log. '${atEventId}' is not present.`,
+          why: "The fork point identifies the prefix to copy into the new run. An unknown event id means either a typo or referencing an id from a different run.",
+          howToFix: `Pick an event id from \`runtime.graph.events\`. Check status() or the trace to find the right fork point.`,
+          context: { at_event_id: atEventId, run_id: this.graph.runId },
+        },
+      );
+    }
+    const prefix = this.graph.events.slice(0, cutIndex + 1);
+
+    const forkIds = new IDGen();
+    const forkGraph = new Graph({
+      ids: forkIds,
+      clock: this.graph.clock,
+      runId: opts.runId ?? this.graph.ids.run(),
+    });
+    forkGraph.parentRunId = this.graph.runId;
+    forkGraph.forkedAtEventId = atEventId;
+    if (opts.label !== undefined) forkGraph.label = opts.label;
+
+    for (const ev of prefix) forkGraph.replayEvent(ev);
+    forkGraph.ids.reseedFromEvents(prefix);
+
+    const childOpts: RuntimeOptions = {
+      behaviors: opts.behaviors ?? this.behaviors,
+    };
+    if (this.frame !== null) childOpts.frame = this.frame;
+    return new Runtime(forkGraph, childOpts);
   }
 
   // --- trace shortcut ----
