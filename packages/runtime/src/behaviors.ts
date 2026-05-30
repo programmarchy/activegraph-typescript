@@ -7,6 +7,7 @@
 import type { Event, Graph, WhereClause } from "@activegraph/core";
 
 import type { RuntimeContext } from "./context.js";
+import { type PatternMatcher, parse as parsePattern } from "./patterns.js";
 
 export type BehaviorHandler = (
   event: Event,
@@ -102,6 +103,8 @@ export interface Behavior {
   readonly creates: readonly string[];
   readonly priority: number;
   readonly pattern: string | null;
+  /** Compiled at registration time. null when pattern is null. */
+  readonly matcher: PatternMatcher | null;
   readonly activateAfter: number | null;
 }
 
@@ -116,6 +119,7 @@ export interface RelationBehavior {
   readonly creates: readonly string[];
   readonly priority: number;
   readonly pattern: string | null;
+  readonly matcher: PatternMatcher | null;
   readonly activateAfter: number | null;
 }
 
@@ -130,6 +134,7 @@ export interface LLMBehavior<Output = unknown> {
   readonly creates: readonly string[];
   readonly priority: number;
   readonly pattern: string | null;
+  readonly matcher: PatternMatcher | null;
   readonly activateAfter: number | null;
   readonly model: string | null;
   readonly outputSchema: OutputSchema<Output> | null;
@@ -166,6 +171,10 @@ function register<T extends { kind: AnyBehavior["kind"] }>(b: T): T {
 
 // --- factories ------------------------------------------------------------
 
+function compileMatcher(pattern: string | null | undefined): PatternMatcher | null {
+  return pattern ? parsePattern(pattern).compile() : null;
+}
+
 export function defineBehavior(def: BehaviorDef): Behavior {
   return register<Behavior>({
     kind: "behavior",
@@ -177,6 +186,7 @@ export function defineBehavior(def: BehaviorDef): Behavior {
     creates: def.creates ?? [],
     priority: def.priority ?? 0,
     pattern: def.pattern ?? null,
+    matcher: compileMatcher(def.pattern),
     activateAfter: def.activateAfter ?? null,
   });
 }
@@ -193,6 +203,7 @@ export function defineRelationBehavior(def: RelationBehaviorDef): RelationBehavi
     creates: def.creates ?? [],
     priority: def.priority ?? 0,
     pattern: def.pattern ?? null,
+    matcher: compileMatcher(def.pattern),
     activateAfter: def.activateAfter ?? null,
   });
 }
@@ -211,6 +222,7 @@ export function defineLLMBehavior<Output = unknown>(
     creates: def.creates ?? [],
     priority: def.priority ?? 0,
     pattern: def.pattern ?? null,
+    matcher: compileMatcher(def.pattern),
     activateAfter: def.activateAfter ?? null,
     model: def.model ?? null,
     outputSchema: def.outputSchema ?? null,
