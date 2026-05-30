@@ -1,0 +1,36 @@
+{
+  "name": "@activegraph/llm-anthropic",
+  "version": "0.0.0",
+  "description": "Anthropic provider implementation.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "dependencies": {
+    "@activegraph/core": "workspace:^",
+    "@activegraph/llm": "workspace:^",
+    "@anthropic-ai/sdk": "^0.100.1"
+  }
+}

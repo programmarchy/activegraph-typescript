@@ -1,0 +1,41 @@
+{
+  "name": "@activegraph/cli",
+  "version": "0.0.0",
+  "description": "activegraph CLI (commander). bin: activegraph.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "bin": {
+    "activegraph": "./bin/activegraph.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "dependencies": {
+    "@activegraph/core": "workspace:^",
+    "@activegraph/runtime": "workspace:^",
+    "@activegraph/store-memory": "workspace:^",
+    "commander": "^15.0.0"
+  }
+}

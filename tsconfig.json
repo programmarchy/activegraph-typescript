@@ -1,0 +1,19 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/runtime" },
+    { "path": "./packages/store-memory" },
+    { "path": "./packages/store-sqlite" },
+    { "path": "./packages/store-postgres" },
+    { "path": "./packages/llm" },
+    { "path": "./packages/llm-anthropic" },
+    { "path": "./packages/llm-openai" },
+    { "path": "./packages/tools" },
+    { "path": "./packages/observability" },
+    { "path": "./packages/packs" },
+    { "path": "./packages/pack-diligence" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/umbrella" }
+  ]
+}
