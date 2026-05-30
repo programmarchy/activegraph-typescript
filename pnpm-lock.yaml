@@ -32,12 +32,18 @@ importers:
       '@activegraph/core':
         specifier: workspace:^
         version: link:../core
+      '@activegraph/observability':
+        specifier: workspace:1.0.5-alpha.0
+        version: link:../observability
       '@activegraph/runtime':
         specifier: workspace:^
         version: link:../runtime
       '@activegraph/store-memory':
         specifier: workspace:^
         version: link:../store-memory
+      '@activegraph/store-sqlite':
+        specifier: workspace:1.0.5-alpha.0
+        version: link:../store-sqlite
       commander:
         specifier: ^15.0.0
         version: 15.0.0
