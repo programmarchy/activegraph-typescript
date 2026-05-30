@@ -30,6 +30,10 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/store-memory": "workspace:^"
+    "@activegraph/store-memory": "workspace:^",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0"
   }
 }
