@@ -31,6 +31,20 @@ export { Runtime } from "./runtime.js";
 export type { RuntimeOptions, ForkOptions, LoadOptions, ReplayableStore } from "./runtime.js";
 
 export {
+  LLMCache,
+  assemblePrompt,
+  parseOutput,
+  extractJSON,
+  dispatchLLMBehavior,
+} from "./llm-dispatch.js";
+export type {
+  AssembledPrompt,
+  PromptInput,
+  LLMDispatchOptions,
+  LLMDispatchResult,
+} from "./llm-dispatch.js";
+
+export {
   Pattern,
   PatternMatcher,
   Match,

@@ -20,6 +20,8 @@ import {
   evaluateWhere,
 } from "@activegraph/core";
 
+import type { LLMProvider } from "@activegraph/llm";
+
 import type {
   AnyBehavior,
   Behavior,
@@ -35,6 +37,7 @@ import {
   InvalidArgumentType,
   ReplayDivergenceError,
 } from "./errors.js";
+import { type LLMCache, dispatchLLMBehavior } from "./llm-dispatch.js";
 import type { MatchHandle } from "./patterns.js";
 import { buildView } from "./view-builder.js";
 
@@ -48,6 +51,16 @@ export interface RuntimeOptions {
    * event is appended to the store. Optional.
    */
   store?: { append: (event: Event) => void | Promise<void> } | null;
+  /**
+   * LLM provider. Required when any @llmBehavior is registered; not
+   * needed otherwise. Recorded/Anthropic/OpenAI all conform.
+   */
+  llmProvider?: LLMProvider;
+  /**
+   * Optional pre-populated LLM cache. Fork-and-diff and strict replay
+   * use this to avoid re-billing for identical prompts.
+   */
+  llmCache?: LLMCache;
 }
 
 export interface ForkOptions {
@@ -211,6 +224,8 @@ export class Runtime {
   readonly graph: Graph;
   readonly budget: Budget;
   readonly behaviors: AnyBehavior[];
+  readonly llmProvider: LLMProvider | null;
+  readonly llmCache: LLMCache | null;
   frame: Frame | null;
 
   private queue: Event[] = [];
@@ -236,6 +251,8 @@ export class Runtime {
     this.budget = opts.budget instanceof Budget ? opts.budget : new Budget(opts.budget ?? {});
     this.behaviors = opts.behaviors ?? [...getRegistry()];
     this.frame = opts.frame ?? null;
+    this.llmProvider = opts.llmProvider ?? null;
+    this.llmCache = opts.llmCache ?? null;
     if (opts.store) graph.attachStore(opts.store);
     this.installListener();
   }
@@ -444,14 +461,60 @@ export class Runtime {
   }
 
   private async fireLLMBehavior(
-    _behavior: LLMBehavior<unknown>,
-    _event: Event,
-    _matches: MatchHandle[],
+    behavior: LLMBehavior<unknown>,
+    event: Event,
+    matches: MatchHandle[],
   ): Promise<void> {
-    // Phase 5: full LLM dispatch lives in @activegraph/llm. The
-    // placeholder consumes the budget so runs with registered LLM
-    // behaviors still terminate predictably in core-only installs.
-    this.budget.consume("maxLlmCalls");
+    if (this.llmProvider === null) {
+      // No provider → can't actually call. Emit behavior.failed so the
+      // trace surfaces the misconfiguration rather than silently
+      // skipping.
+      const started = this.emitInfrastructureEvent(
+        "behavior.started",
+        { behavior: behavior.name, triggering_event_type: event.type },
+        event,
+      );
+      this.emitBehaviorFailed(
+        behavior.name,
+        new Error(
+          `LLM behavior '${behavior.name}' fired but no llmProvider was configured. Pass one to new Runtime(graph, { llmProvider }).`,
+        ),
+        started,
+      );
+      return;
+    }
+
+    const ctx = this.buildCtx(behavior, event, matches);
+    const started = this.emitInfrastructureEvent(
+      "behavior.started",
+      { behavior: behavior.name, triggering_event_type: event.type },
+      event,
+    );
+    this.budget.consume("maxBehaviorCalls");
+
+    try {
+      const { output } = await dispatchLLMBehavior({
+        graph: this.graph,
+        behavior,
+        event,
+        view: ctx.view,
+        ctx,
+        provider: this.llmProvider,
+        cache: this.llmCache,
+        budget: this.budget,
+        frameId: this.frame?.id ?? null,
+        emitInfra: (type, payload, causedBy) =>
+          this.emitInfrastructureEvent(type, payload, causedBy),
+      });
+      await behavior.handler(event, this.graph, ctx, output);
+      this.emitInfrastructureEvent(
+        "behavior.completed",
+        { behavior: behavior.name },
+        started,
+      );
+    } catch (err) {
+      this.emitBehaviorFailed(behavior.name, err, started);
+    }
   }
 
   // --- activateAfter scheduling --------------------------------------------

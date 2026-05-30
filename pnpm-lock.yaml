@@ -106,6 +106,9 @@ importers:
       '@activegraph/core':
         specifier: workspace:^
         version: link:../core
+      '@activegraph/llm':
+        specifier: workspace:1.0.5-alpha.0
+        version: link:../llm
     devDependencies:
       '@activegraph/store-memory':
         specifier: workspace:1.0.5-alpha.0
