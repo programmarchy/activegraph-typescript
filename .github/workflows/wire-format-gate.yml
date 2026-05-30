@@ -1,0 +1,32 @@
+# Wire-format gate. Asserts the Event JSON shape that's part of the
+# cross-runtime peers contract (D4 in PORT-PLAN.md).
+#
+# The full cross-language gate (replay one Python-recorded fixture
+# through the TS RecordedLLMProvider/RecordedToolProvider and diff
+# trace bytes) needs both runtimes checked out in CI. Today this
+# workflow runs the TS-side contract test alone; the Python-side mirror
+# lives in the activegraph repo and asserts the same key names from
+# the other direction.
+
+name: wire-format-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  wire-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run packages/core/test/wire-format.test.ts
