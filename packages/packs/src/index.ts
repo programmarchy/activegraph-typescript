@@ -12,17 +12,23 @@ import { extname, join } from "node:path";
 import type { Graph } from "@activegraph/core";
 import { PackError, RegistrationError } from "@activegraph/core";
 
-// Minimal duck-typed Standard Schema. Avoids requiring users to depend on
-// @standard-schema/spec at this layer; we accept anything with the same
-// shape. Phase 6 may tighten this to the real spec type.
-export interface StandardSchemaLike<T = unknown> {
-  readonly "~standard"?: {
-    types?: { input: T; output: T };
-    validate?: (input: unknown) => { value?: T; issues?: unknown };
-  };
-  // Either Standard Schema OR a Zod-like type with `parse`.
-  parse?: (input: unknown) => T;
-}
+// Minimal duck-typed Standard Schema. Accepts Zod 4, Valibot, ArkType,
+// TypeBox, Effect Schema — anything with a `.parse(input)` or
+// `["~standard"].validate(input)` method.
+//
+// The generic `T` is unused here on purpose: object-type schemas need
+// to be storable in a uniform list, so we lose the input/output type
+// at the boundary. Concrete inference happens at the call site.
+// Phase 6 may tighten this to the real @standard-schema/spec types.
+export type StandardSchemaLike<T = unknown> =
+  | {
+      readonly "~standard": {
+        validate(input: unknown): { value?: T; issues?: unknown };
+      };
+    }
+  | {
+      parse(input: unknown): T;
+    };
 
 export interface ObjectType<T = unknown> {
   name: string;
@@ -105,9 +111,13 @@ export function definePack(def: PackDef): Pack {
 // --- schema validation helpers -------------------------------------------
 
 function validateAgainstSchema<T>(schema: StandardSchemaLike<T>, input: unknown): T {
-  if (typeof schema.parse === "function") {
+  const anySchema = schema as {
+    parse?: (input: unknown) => T;
+    "~standard"?: { validate(input: unknown): { value?: T; issues?: unknown } };
+  };
+  if (typeof anySchema.parse === "function") {
     try {
-      return schema.parse(input);
+      return anySchema.parse(input);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new PackSchemaViolation(`schema validation failed: ${msg}`, {
@@ -119,8 +129,8 @@ function validateAgainstSchema<T>(schema: StandardSchemaLike<T>, input: unknown)
       });
     }
   }
-  if (schema["~standard"]?.validate !== undefined) {
-    const result = schema["~standard"].validate(input);
+  if (anySchema["~standard"] !== undefined) {
+    const result = anySchema["~standard"].validate(input);
     if (result.issues !== undefined) {
       throw new PackSchemaViolation("schema validation failed", {
         whatFailed: `Pack schema validation produced issues: ${JSON.stringify(result.issues)}`,

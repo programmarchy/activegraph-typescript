@@ -18,7 +18,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node -e \"import('node:fs/promises').then(async fs => { await fs.mkdir('dist/prompts', { recursive: true }); const files = await fs.readdir('src/prompts'); for (const f of files) if (f.endsWith('.md')) await fs.copyFile('src/prompts/' + f, 'dist/prompts/' + f); })\"",
     "test": "vitest run",
     "typecheck": "tsc -b"
   },
@@ -31,6 +31,7 @@
   "dependencies": {
     "@activegraph/core": "workspace:^",
     "@activegraph/packs": "workspace:^",
-    "@activegraph/tools": "workspace:^"
+    "@activegraph/tools": "workspace:^",
+    "zod": "^4.4.3"
   }
 }
