@@ -1,0 +1,156 @@
+{
+  "_comment": "Sample event log shaped exactly as the Python activegraph runtime would serialize it (Event.to_dict). Used by cross-runtime fixture interop test to prove a Python-recorded fixture replays correctly in TS. Run id, event ids, and timestamps are stable across runs (FrozenClock fixture).",
+  "run_id": "RUN_PY_FIXTURE_001",
+  "events": [
+    {
+      "id": "evt_001",
+      "type": "goal.created",
+      "payload": { "goal": "Evaluate Acme Corp." },
+      "actor": "user",
+      "frame_id": null,
+      "caused_by": null,
+      "timestamp": "2026-05-15T10:32:01Z"
+    },
+    {
+      "id": "evt_002",
+      "type": "behavior.started",
+      "payload": { "behavior": "planner", "triggering_event_type": "goal.created" },
+      "actor": "runtime",
+      "frame_id": null,
+      "caused_by": "evt_001",
+      "timestamp": "2026-05-15T10:32:01Z"
+    },
+    {
+      "id": "evt_003",
+      "type": "object.created",
+      "payload": {
+        "object": {
+          "id": "claim#1",
+          "type": "claim",
+          "data": { "text": "Revenue is growing.", "confidence": 0.85, "company_id": "company#0" },
+          "version": 1,
+          "provenance": {
+            "created_by": "planner",
+            "caused_by_event": "evt_001",
+            "frame_id": null,
+            "timestamp": "2026-05-15T10:32:01Z",
+            "evidence": [],
+            "run_id": "RUN_PY_FIXTURE_001"
+          }
+        },
+        "id": "claim#1"
+      },
+      "actor": "planner",
+      "frame_id": null,
+      "caused_by": null,
+      "timestamp": "2026-05-15T10:32:01Z"
+    },
+    {
+      "id": "evt_004",
+      "type": "object.created",
+      "payload": {
+        "object": {
+          "id": "evidence#2",
+          "type": "evidence",
+          "data": {
+            "text": "FY24 revenue up 42% YoY.",
+            "document_id": "doc#0",
+            "claim_id": "claim#1"
+          },
+          "version": 1,
+          "provenance": {
+            "created_by": "planner",
+            "caused_by_event": "evt_001",
+            "frame_id": null,
+            "timestamp": "2026-05-15T10:32:01Z",
+            "evidence": [],
+            "run_id": "RUN_PY_FIXTURE_001"
+          }
+        },
+        "id": "evidence#2"
+      },
+      "actor": "planner",
+      "frame_id": null,
+      "caused_by": null,
+      "timestamp": "2026-05-15T10:32:01Z"
+    },
+    {
+      "id": "evt_005",
+      "type": "relation.created",
+      "payload": {
+        "relation": {
+          "id": "rel_001",
+          "source": "evidence#2",
+          "target": "claim#1",
+          "type": "supports",
+          "data": {},
+          "provenance": {
+            "created_by": "planner",
+            "caused_by_event": "evt_001",
+            "frame_id": null,
+            "timestamp": "2026-05-15T10:32:01Z",
+            "evidence": [],
+            "run_id": "RUN_PY_FIXTURE_001"
+          }
+        },
+        "id": "rel_001",
+        "source": "evidence#2",
+        "target": "claim#1"
+      },
+      "actor": "planner",
+      "frame_id": null,
+      "caused_by": null,
+      "timestamp": "2026-05-15T10:32:01Z"
+    },
+    {
+      "id": "evt_006",
+      "type": "patch.applied",
+      "payload": {
+        "patch": {
+          "id": "patch_001",
+          "target": "claim#1",
+          "op": "update",
+          "value": { "status": "reviewed" },
+          "expected_version": 1,
+          "proposed_by": "reviewer",
+          "rationale": null,
+          "evidence": [],
+          "status": "applied",
+          "rejection_reason": null,
+          "provenance": {
+            "created_by": "reviewer",
+            "caused_by_event": "evt_001",
+            "frame_id": null,
+            "timestamp": "2026-05-15T10:32:01Z",
+            "evidence": [],
+            "run_id": "RUN_PY_FIXTURE_001"
+          }
+        },
+        "target": "claim#1",
+        "diff": { "status": { "old": null, "new": "reviewed" } }
+      },
+      "actor": "reviewer",
+      "frame_id": null,
+      "caused_by": "evt_001",
+      "timestamp": "2026-05-15T10:32:02Z"
+    },
+    {
+      "id": "evt_007",
+      "type": "behavior.completed",
+      "payload": { "behavior": "planner", "objects_created": 2, "relations_created": 1 },
+      "actor": "runtime",
+      "frame_id": null,
+      "caused_by": "evt_002",
+      "timestamp": "2026-05-15T10:32:02Z"
+    },
+    {
+      "id": "evt_008",
+      "type": "runtime.idle",
+      "payload": {},
+      "actor": "runtime",
+      "frame_id": null,
+      "caused_by": null,
+      "timestamp": "2026-05-15T10:32:02Z"
+    }
+  ]
+}
