@@ -7,9 +7,26 @@
 
 import { RegistrationError } from "@activegraph/core";
 
+export interface LLMToolCall {
+  /** Provider-issued id; needed by Anthropic to pair with tool_result. */
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface LLMToolResult {
+  toolCallId: string;
+  output?: unknown;
+  error?: string;
+}
+
 export interface LLMMessage {
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "tool";
   content: string;
+  /** Present on assistant messages when the model emitted tool_use blocks. */
+  toolCalls?: LLMToolCall[];
+  /** Present on tool-result messages — the answer to a previous toolCall. */
+  toolResult?: LLMToolResult;
 }
 
 export interface LLMRequest {
@@ -29,7 +46,12 @@ export interface LLMResponse {
   outputTokens: number;
   costUsd: number | null;
   latencySeconds: number;
-  /** Raw text + tool calls; provider-specific shape. */
+  /**
+   * Tool calls the model wants the runtime to execute before continuing.
+   * When undefined or empty, this is the final response.
+   */
+  toolCalls?: LLMToolCall[];
+  /** Raw provider payload — debugging only. */
   raw?: Record<string, unknown>;
 }
 

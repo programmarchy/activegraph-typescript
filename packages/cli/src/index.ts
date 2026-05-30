@@ -14,6 +14,7 @@ import { Command } from "commander";
 
 import { Graph, Trace, type makeEvent } from "@activegraph/core";
 import { migrate } from "@activegraph/observability";
+import { scaffoldPack } from "@activegraph/packs";
 import {
   Runtime,
   clearRegistry,
@@ -85,6 +86,16 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     .option("--run-id <id>", "Run id")
     .action(async (storeUrl: string, opts: { strict?: boolean; runId?: string }) =>
       set(await replayCmd(storeUrl, opts)),
+    );
+
+  program
+    .command("scaffold <name>")
+    .description("Scaffold a new Active Graph pack (creates ./<name>/)")
+    .option("-d, --dir <dir>", "Output directory", ".")
+    .option("--version <version>", "Initial version", "0.1.0")
+    .option("--description <text>", "Pack description")
+    .action(async (name: string, opts: { dir?: string; version?: string; description?: string }) =>
+      set(await scaffoldCmd(name, opts)),
     );
 
   program
@@ -222,6 +233,29 @@ async function forkCmd(
     return 1;
   } finally {
     await store.close();
+  }
+}
+
+// --- scaffold -----------------------------------------------------------
+
+async function scaffoldCmd(
+  name: string,
+  opts: { dir?: string; version?: string; description?: string },
+): Promise<number> {
+  try {
+    const result = await scaffoldPack({
+      name,
+      dir: opts.dir ?? ".",
+      ...(opts.version !== undefined ? { version: opts.version } : {}),
+      ...(opts.description !== undefined ? { description: opts.description } : {}),
+    });
+    out(`scaffolded pack '${name}' at ${result.packageDir}`);
+    for (const f of result.files) out(`  created ${f}`);
+    return 0;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    out(`scaffold failed: ${msg}`);
+    return 1;
   }
 }
 

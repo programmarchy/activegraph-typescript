@@ -354,3 +354,6 @@ export interface PendingApproval {
   readonly behaviorName: string;
   readonly reason: string;
 }
+
+export { scaffoldPack } from "./scaffold.js";
+export type { ScaffoldOptions, ScaffoldResult } from "./scaffold.js";

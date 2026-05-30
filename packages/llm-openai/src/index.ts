@@ -3,9 +3,13 @@
 
 import { encode } from "gpt-tokenizer";
 import OpenAI from "openai";
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionToolMessageParam,
+} from "openai/resources/chat/completions";
 
 import { MissingOptionalDependency } from "@activegraph/core";
-import type { LLMProvider, LLMRequest, LLMResponse } from "@activegraph/llm";
+import type { LLMMessage, LLMProvider, LLMRequest, LLMResponse } from "@activegraph/llm";
 
 export interface OpenAIProviderOptions {
   /** OpenAI API key. Falls back to OPENAI_API_KEY env var. */
@@ -47,7 +51,7 @@ export class OpenAIProvider implements LLMProvider {
     const t0 = performance.now();
     const response = await this.client.chat.completions.create({
       model: request.model || this.defaultModel,
-      messages: request.messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: request.messages.map(toOpenAIMessage),
       max_tokens: request.maxTokens ?? 4096,
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.topP !== undefined ? { top_p: request.topP } : {}),
@@ -68,8 +72,34 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   countTokens(text: string, _model?: string): number {
-    // gpt-tokenizer is pure-JS, no wasm download, accurate for GPT-4/4o
-    // family.
     return encode(text).length;
   }
 }
+
+function toOpenAIMessage(m: LLMMessage): ChatCompletionMessageParam {
+  if (m.role === "tool") {
+    const result: ChatCompletionToolMessageParam = {
+      role: "tool",
+      tool_call_id: m.toolResult?.toolCallId ?? "",
+      content: m.content,
+    };
+    return result;
+  }
+  if (m.role === "assistant") {
+    return {
+      role: "assistant",
+      content: m.content,
+      ...(m.toolCalls && m.toolCalls.length > 0
+        ? {
+            tool_calls: m.toolCalls.map((c) => ({
+              id: c.id,
+              type: "function" as const,
+              function: { name: c.name, arguments: JSON.stringify(c.args) },
+            })),
+          }
+        : {}),
+    };
+  }
+  return { role: m.role, content: m.content };
+}
+

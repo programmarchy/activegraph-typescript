@@ -35,6 +35,9 @@ importers:
       '@activegraph/observability':
         specifier: workspace:1.0.5-alpha.0
         version: link:../observability
+      '@activegraph/packs':
+        specifier: workspace:1.0.5-alpha.0
+        version: link:../packs
       '@activegraph/runtime':
         specifier: workspace:^
         version: link:../runtime

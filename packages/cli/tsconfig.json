@@ -11,6 +11,7 @@
     { "path": "../runtime" },
     { "path": "../store-memory" },
     { "path": "../store-sqlite" },
-    { "path": "../observability" }
+    { "path": "../observability" },
+    { "path": "../packs" }
   ]
 }

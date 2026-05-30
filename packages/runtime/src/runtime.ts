@@ -541,6 +541,10 @@ export class Runtime {
         cache: this.llmCache,
         budget: this.budget,
         frameId: this.frame?.id ?? null,
+        availableTools: this.tools,
+        toolCache: this.toolCache,
+        eventId: () => this.graph.ids.event(),
+        clockNow: () => this.graph.clock.now(),
         emitInfra: (type, payload, causedBy) =>
           this.emitInfrastructureEvent(type, payload, causedBy),
       });
