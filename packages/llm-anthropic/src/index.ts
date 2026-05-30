@@ -72,7 +72,7 @@ export class AnthropicProvider implements LLMProvider {
       text,
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
-      // Cost calc would lookup the model price; left null in v2.0-dev.
+      // Cost calc would lookup the model price; left null in v1.0.5-alpha.
       costUsd: null,
       latencySeconds,
       raw: response as unknown as Record<string, unknown>,

@@ -190,7 +190,7 @@ export interface InternalBugFields {
 
 export function internalBugFields(input: InternalBugInput): InternalBugFields {
   // Keep the version literal aligned with the umbrella package's version.
-  const frameworkVersion = "2.0.0-dev";
+  const frameworkVersion = "1.0.5-alpha.0";
   const ctx: Record<string, unknown> = {
     internal: true,
     framework_version: frameworkVersion,

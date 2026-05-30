@@ -8,7 +8,7 @@ improve the API, and we keep the public surface stable in shape and
 semantics so the existing docs and examples translate one-for-one.
 
 This document is the design contract for the port. CONTRACT.md will get
-a v2.0 section once the choices below are accepted.
+a v1.0.5 section once the choices below are accepted.
 
 ---
 
@@ -33,7 +33,7 @@ a v2.0 section once the choices below are accepted.
 - 1:1 file-for-file mirror. We collapse small Python modules where TS
   prefers fewer files, and split a couple of God-modules (`runtime.py`
   at 2.6K LOC) along their natural seams.
-- Browser/edge runtime support in v2.0 (later: a `core` package with no
+- Browser/edge runtime support in v1.0.5 (later: a `core` package with no
   Node deps is browser-shippable; SQLite/Postgres stay Node-only).
 - Backwards Python compatibility — the wire format for the event log
   must match (so the same fixture JSON deserializes in either runtime),
@@ -425,7 +425,7 @@ The Python test suite is the framework's most important asset.
 ### 5.3 New gates introduced by the port
 
 - **TS strict type-check** over the whole repo (replaces the
-  allowlist-based mypy gate; v2.0 starts clean).
+  allowlist-based mypy gate; v1.0.5 starts clean).
 - **`npm pack` completeness** — install the tarball into a scratch dir
   and run quickstart against it. Same shape as the Python wheel-
   completeness gate.
@@ -511,7 +511,7 @@ catches drift; without it, the two runtimes will diverge silently.
 
 ---
 
-## 9. What ships in v2.0.0
+## 9. What ships in v1.0.5
 
 The first npm release. Scope-equivalent to `pip install activegraph`:
 
@@ -525,6 +525,6 @@ The first npm release. Scope-equivalent to `pip install activegraph`:
 - README updated to show TS code blocks; existing docs site continues
   to host concept pages with both Python and TS code samples.
 
-After v2.0.0, the Python and TS runtimes evolve in lockstep. The
+After v1.0.5, the Python and TS runtimes evolve in lockstep. The
 CONTRACT.md v1.1 roadmap items map straight onto the TS codebase
 (they're language-agnostic design decisions).

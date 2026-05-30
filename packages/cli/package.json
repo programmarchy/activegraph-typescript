@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/cli",
-  "version": "0.0.0",
+  "version": "1.0.5-alpha.0",
   "description": "activegraph CLI (commander). bin: activegraph.",
   "type": "module",
   "main": "./dist/index.js",

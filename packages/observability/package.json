@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/observability",
-  "version": "0.0.0",
+  "version": "1.0.5-alpha.0",
   "description": "Structured logging (pino), metrics (prom-client), runtime status, migration report.",
   "type": "module",
   "main": "./dist/index.js",

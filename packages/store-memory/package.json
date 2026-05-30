@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/store-memory",
-  "version": "0.0.0",
+  "version": "1.0.5-alpha.0",
   "description": "In-memory EventStore implementation + the conformance test suite.",
   "type": "module",
   "main": "./dist/index.js",

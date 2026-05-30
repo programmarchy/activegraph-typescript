@@ -14,7 +14,7 @@ import { Graph, Trace } from "@activegraph/core";
 import { Runtime, clearRegistry, defineBehavior } from "@activegraph/runtime";
 import { InMemoryEventStore } from "@activegraph/store-memory";
 
-export const VERSION = "2.0.0-dev";
+export const VERSION = "1.0.5-alpha.0";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const program = new Command();

@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/runtime",
-  "version": "0.0.0",
+  "version": "1.0.5-alpha.0",
   "description": "Runtime, scheduler, queue, pattern engine, defineBehavior / defineRelationBehavior, replay, fork-and-diff.",
   "type": "module",
   "main": "./dist/index.js",

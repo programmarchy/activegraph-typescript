@@ -1,6 +1,6 @@
 {
   "name": "@activegraph/store-sqlite",
-  "version": "0.0.0",
+  "version": "1.0.5-alpha.0",
   "description": "SQLite-backed EventStore (better-sqlite3).",
   "type": "module",
   "main": "./dist/index.js",
