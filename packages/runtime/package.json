@@ -34,6 +34,7 @@
     "@activegraph/tools": "workspace:1.0.5-alpha.0"
   },
   "devDependencies": {
-    "@activegraph/store-memory": "workspace:1.0.5-alpha.0"
+    "@activegraph/store-memory": "workspace:1.0.5-alpha.0",
+    "@activegraph/store-sqlite": "workspace:1.0.5-alpha.0"
   }
 }
