@@ -84,12 +84,39 @@ describe("Persistence", () => {
     });
 
     const reloaded = await Runtime.load(store);
-    const obj = reloaded.graph.allObjects().find((o) => o.type === "custom")!;
-    expect(obj.data).toEqual({
+    const obj = reloaded.graph.allObjects().find((o) => o.type === "custom");
+    expect(obj?.data).toEqual({
       nested: { items: [1, 2, { a: "b" }] },
       unicode: "café — 🚀",
       empty: [],
       "null-valued": null,
     });
+  });
+
+  it("awaits async store appends before runGoal resolves", async () => {
+    const g = newGraph();
+    const appended: string[] = [];
+    g.attachStore({
+      async append(event) {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        appended.push(event.id);
+      },
+    });
+
+    await new Runtime(g).runGoal("durable");
+
+    expect(appended).toEqual(g.events.map((event) => event.id));
+  });
+
+  it("surfaces async store append failures from runGoal", async () => {
+    const g = newGraph();
+    g.attachStore({
+      async append() {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        throw new Error("store write failed");
+      },
+    });
+
+    await expect(new Runtime(g).runGoal("durable")).rejects.toThrow(/store write failed/);
   });
 });

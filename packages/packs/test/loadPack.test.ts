@@ -45,7 +45,7 @@ describe("definePack", () => {
       version: "1.0",
       prompts: [{ name: "p", text: "hello" }],
     });
-    expect(pack.prompts[0]!.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(pack.prompts[0]?.hash).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("respects explicit prompt hash", () => {
@@ -54,7 +54,7 @@ describe("definePack", () => {
       version: "1.0",
       prompts: [{ name: "p", text: "hello", hash: "deadbeef" }],
     });
-    expect(pack.prompts[0]!.hash).toBe("deadbeef");
+    expect(pack.prompts[0]?.hash).toBe("deadbeef");
   });
 });
 
@@ -122,6 +122,35 @@ describe("loadPack", () => {
     expect(() => g.addObject("claim", {})).toThrow(PackSchemaViolation);
   });
 
+  it("rejects cross-pack object-type conflicts before mutating validators", () => {
+    const Stub = { parse: (v: unknown) => v as Record<string, unknown> };
+    const packA = definePack({
+      name: "a",
+      version: "1",
+      objectTypes: [{ name: "claim", schema: Stub }],
+    });
+    const packB = definePack({
+      name: "b",
+      version: "1",
+      objectTypes: [{ name: "claim", schema: Stub }],
+    });
+
+    const g = new Graph();
+    loadPack(g, packA);
+
+    expect(() => loadPack(g, packB)).toThrow(PackConflictError);
+    expect(() => g.addObject("claim", {})).not.toThrow();
+  });
+
+  it("rejects loading another version of an already-loaded pack", () => {
+    const g = new Graph();
+    loadPack(g, definePack({ name: "same", version: "1" }));
+
+    expect(() => loadPack(g, definePack({ name: "same", version: "2" }))).toThrow(
+      PackVersionConflictError,
+    );
+  });
+
   it("rejects duplicate object-type names within one pack", () => {
     const Stub = { parse: (v: unknown) => v as Record<string, unknown> };
     expect(() =>
@@ -163,7 +192,9 @@ describe("registerPack / loadByName / discover", () => {
   it("discover lists all registered packs", () => {
     registerPack(definePack({ name: "a", version: "1" }));
     registerPack(definePack({ name: "b", version: "1" }));
-    const names = discover().map((d) => d.name).sort();
+    const names = discover()
+      .map((d) => d.name)
+      .sort();
     expect(names).toEqual(["a", "b"]);
   });
 });
@@ -187,8 +218,8 @@ describe("loadPromptsFromDir", () => {
     const prompts = await loadPromptsFromDir(dir);
     const byName = Object.fromEntries(prompts.map((p) => [p.name, p]));
     expect(Object.keys(byName).sort()).toEqual(["extract", "summarize"]);
-    expect(byName.summarize!.text).toBe("Summarize the input.");
-    expect(byName.summarize!.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(byName.summarize?.text).toBe("Summarize the input.");
+    expect(byName.summarize?.hash).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("throws PackPromptLoadError when dir does not exist", async () => {

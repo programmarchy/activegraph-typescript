@@ -6,7 +6,7 @@
 // ArkType / TypeBox / Effect Schema also work).
 
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
 
 import type { Graph } from "@activegraph/core";
@@ -148,6 +148,27 @@ function validateAgainstSchema<T>(schema: StandardSchemaLike<T>, input: unknown)
 
 // --- loading a pack into a Graph ----------------------------------------
 
+interface GraphPackState {
+  loadedPacks: Map<string, Pack>;
+  objectTypeOwners: Map<string, string>;
+  relationTypeOwners: Map<string, string>;
+}
+
+const GRAPH_PACK_STATE = new WeakMap<Graph, GraphPackState>();
+
+function packStateFor(graph: Graph): GraphPackState {
+  let state = GRAPH_PACK_STATE.get(graph);
+  if (state === undefined) {
+    state = {
+      loadedPacks: new Map(),
+      objectTypeOwners: new Map(),
+      relationTypeOwners: new Map(),
+    };
+    GRAPH_PACK_STATE.set(graph, state);
+  }
+  return state;
+}
+
 /**
  * Wire a Pack's object-type and relation-type rules into a Graph.
  *
@@ -161,16 +182,41 @@ function validateAgainstSchema<T>(schema: StandardSchemaLike<T>, input: unknown)
  * declare the same object type name throws PackConflictError.
  */
 export function loadPack(graph: Graph, pack: Pack): void {
+  const state = packStateFor(graph);
+  const loaded = state.loadedPacks.get(pack.name);
+  if (loaded !== undefined) {
+    if (loaded.version === pack.version) return;
+    throw new PackVersionConflictError(
+      `pack '${pack.name}' already loaded at version ${loaded.version}; refused to load ${pack.version}`,
+      {
+        whatFailed: `loadPack(graph, pack '${pack.name}' version '${pack.version}') was called, but this graph already has version '${loaded.version}' loaded.`,
+        why: "A graph can enforce only one version of a pack name at a time. Two versions could attach different schemas to the same object or relation type.",
+        howToFix:
+          "Use a fresh Graph for the second pack version, or rename one pack if both schemas are intentionally distinct.",
+        context: { pack: pack.name, loaded: loaded.version, requested: pack.version },
+      },
+    );
+  }
+
   const schemas = new Map<string, StandardSchemaLike<unknown>>();
   for (const ot of pack.objectTypes) {
     if (schemas.has(ot.name)) {
+      throw new PackConflictError(`pack '${pack.name}' declares object type '${ot.name}' twice`, {
+        whatFailed: `Pack '${pack.name}' has two object-type entries named '${ot.name}'.`,
+        why: "Each object type within a pack must be unique by name; otherwise validators would shadow each other unpredictably.",
+        howToFix: "Rename one of the duplicate types or merge them.",
+        context: { pack: pack.name, object_type: ot.name },
+      });
+    }
+    const owner = state.objectTypeOwners.get(ot.name);
+    if (owner !== undefined) {
       throw new PackConflictError(
-        `pack '${pack.name}' declares object type '${ot.name}' twice`,
+        `object type conflict: '${ot.name}' is already provided by pack '${owner}'`,
         {
-          whatFailed: `Pack '${pack.name}' has two object-type entries named '${ot.name}'.`,
-          why: "Each object type within a pack must be unique by name; otherwise validators would shadow each other unpredictably.",
-          howToFix: "Rename one of the duplicate types or merge them.",
-          context: { pack: pack.name, object_type: ot.name },
+          whatFailed: `Pack '${pack.name}' declares object type '${ot.name}', but pack '${owner}' already owns that object type on this graph.`,
+          why: "Object type validators compose by type name. If two packs claim the same type name, one validator would shadow or double-validate the other.",
+          howToFix: "Rename one object type or load these packs into separate Graph instances.",
+          context: { object_type: ot.name, owner_pack: owner, conflicting_pack: pack.name },
         },
       );
     }
@@ -179,6 +225,26 @@ export function loadPack(graph: Graph, pack: Pack): void {
 
   const relRules = new Map<string, RelationType>();
   for (const rt of pack.relationTypes) {
+    if (relRules.has(rt.name)) {
+      throw new PackConflictError(`pack '${pack.name}' declares relation type '${rt.name}' twice`, {
+        whatFailed: `Pack '${pack.name}' has two relation-type entries named '${rt.name}'.`,
+        why: "Each relation type within a pack must be unique by name; otherwise source/target rules would shadow each other unpredictably.",
+        howToFix: "Rename one of the duplicate relation types or merge their rules.",
+        context: { pack: pack.name, relation_type: rt.name },
+      });
+    }
+    const owner = state.relationTypeOwners.get(rt.name);
+    if (owner !== undefined) {
+      throw new PackConflictError(
+        `relation type conflict: '${rt.name}' is already provided by pack '${owner}'`,
+        {
+          whatFailed: `Pack '${pack.name}' declares relation type '${rt.name}', but pack '${owner}' already owns that relation type on this graph.`,
+          why: "Relation type validators compose by type name. If two packs claim the same relation name, one source/target rule would shadow or double-validate the other.",
+          howToFix: "Rename one relation type or load these packs into separate Graph instances.",
+          context: { relation_type: rt.name, owner_pack: owner, conflicting_pack: pack.name },
+        },
+      );
+    }
     relRules.set(rt.name, rt);
   }
 
@@ -211,7 +277,8 @@ export function loadPack(graph: Graph, pack: Pack): void {
         {
           whatFailed: `addRelation(... '${type}' ...) had source type '${sourceType}', but pack '${pack.name}' restricts this relation's sources to ${JSON.stringify(rule.allowedSources)}.`,
           why: "Relation-type rules let packs enforce graph shape — e.g. a 'supports' edge from 'evidence' to 'claim'.",
-          howToFix: `Pick a source of an allowed type, or relax the allowedSources list on the pack.`,
+          howToFix:
+            "Pick a source of an allowed type, or relax the allowedSources list on the pack.",
           context: { relation_type: type, source_type: sourceType, allowed: rule.allowedSources },
         },
       );
@@ -227,12 +294,17 @@ export function loadPack(graph: Graph, pack: Pack): void {
         {
           whatFailed: `addRelation(... '${type}' ...) had target type '${targetType}', but pack '${pack.name}' restricts this relation's targets to ${JSON.stringify(rule.allowedTargets)}.`,
           why: "Relation-type rules let packs enforce graph shape.",
-          howToFix: `Pick a target of an allowed type, or relax the allowedTargets list on the pack.`,
+          howToFix:
+            "Pick a target of an allowed type, or relax the allowedTargets list on the pack.",
           context: { relation_type: type, target_type: targetType, allowed: rule.allowedTargets },
         },
       );
     }
   };
+
+  state.loadedPacks.set(pack.name, pack);
+  for (const name of schemas.keys()) state.objectTypeOwners.set(name, pack.name);
+  for (const name of relRules.keys()) state.relationTypeOwners.set(name, pack.name);
 }
 
 // --- discovery / loading by name -----------------------------------------

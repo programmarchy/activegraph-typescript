@@ -15,21 +15,16 @@ import {
   Graph,
   IDGen,
   Trace,
-  View,
-  makeEvent,
+  type View,
   evaluateWhere,
+  makeEvent,
 } from "@activegraph/core";
 
-import type { LLMProvider } from "@activegraph/llm";
+import type { LLMProvider, LLMRequest, LLMResponse } from "@activegraph/llm";
 import type { Tool, ToolResult } from "@activegraph/tools";
-import { getToolRegistry, UnknownToolError } from "@activegraph/tools";
+import { UnknownToolError, getToolRegistry } from "@activegraph/tools";
 
-import type {
-  AnyBehavior,
-  Behavior,
-  LLMBehavior,
-  RelationBehavior,
-} from "./behaviors.js";
+import type { AnyBehavior, Behavior, LLMBehavior, RelationBehavior } from "./behaviors.js";
 import { getRegistry } from "./behaviors.js";
 import { Budget, type BudgetLimits } from "./budget.js";
 import type { RuntimeContext } from "./context.js";
@@ -39,9 +34,9 @@ import {
   InvalidArgumentType,
   ReplayDivergenceError,
 } from "./errors.js";
-import { type LLMCache, dispatchLLMBehavior } from "./llm-dispatch.js";
+import { LLMCache, dispatchLLMBehavior } from "./llm-dispatch.js";
 import type { MatchHandle } from "./patterns.js";
-import { type ToolCache, dispatchTool } from "./tool-dispatch.js";
+import { ToolCache, dispatchTool } from "./tool-dispatch.js";
 import { buildView } from "./view-builder.js";
 
 export interface RuntimeOptions {
@@ -99,6 +94,10 @@ export interface LoadOptions {
   behaviors?: AnyBehavior[];
   frame?: Frame;
   budget?: BudgetLimits | Budget;
+  llmProvider?: LLMProvider;
+  llmCache?: LLMCache;
+  tools?: Tool[];
+  toolCache?: ToolCache;
 }
 
 interface ScheduledEntry {
@@ -160,17 +159,68 @@ const GRAPH_MUTATION_TYPES = new Set([
   "patch.rejected",
 ]);
 
-async function verifyReplay(recorded: Event[], behaviors: AnyBehavior[]): Promise<void> {
+class ReplayOnlyLLMProvider implements LLMProvider {
+  readonly name = "replay-only";
+  readonly defaultModel: string;
+
+  constructor(defaultModel: string) {
+    this.defaultModel = defaultModel;
+  }
+
+  async complete(request: LLMRequest): Promise<LLMResponse> {
+    throw new ReplayDivergenceError(
+      `strict replay needed an uncached LLM response for model '${request.model}'`,
+      {
+        whatFailed:
+          "Strict replay re-fired an LLM behavior, but the recorded llm.responded event log did not contain a response for the rebuilt prompt hash.",
+        why: "Strict replay must not call a live provider implicitly. A missing cache entry means the prompt changed, the recorded log is incomplete, or the replay options did not include the needed cache/provider.",
+        howToFix:
+          "Re-record the run with llm.requested/llm.responded events, or pass an explicit llmProvider/llmCache to Runtime.load(..., { strict: true }).",
+      },
+    );
+  }
+
+  countTokens(text: string, _model?: string): number {
+    return Math.ceil(text.length / 4);
+  }
+}
+
+function recordedDefaultModel(events: readonly Event[]): string {
+  for (const e of events) {
+    if (e.type === "llm.requested" && typeof e.payload.model === "string") {
+      return e.payload.model;
+    }
+  }
+  return "recorded";
+}
+
+async function verifyReplay(
+  recorded: Event[],
+  behaviors: AnyBehavior[],
+  opts: {
+    llmProvider?: LLMProvider;
+    llmCache?: LLMCache;
+    tools?: Tool[];
+    toolCache?: ToolCache;
+    frame?: Frame;
+    budget?: BudgetLimits | Budget;
+  } = {},
+): Promise<void> {
   const seeds = recorded.filter(
-    (e) =>
-      e.causedBy === null &&
-      !isRuntimeMetaEvent(e.type) &&
-      !GRAPH_MUTATION_TYPES.has(e.type),
+    (e) => e.causedBy === null && !isRuntimeMetaEvent(e.type) && !GRAPH_MUTATION_TYPES.has(e.type),
   );
   if (seeds.length === 0) return;
 
   const fresh = new Graph({ ids: new IDGen() });
-  const rt = new Runtime(fresh, { behaviors });
+  const rt = new Runtime(fresh, {
+    behaviors,
+    ...(opts.frame !== undefined ? { frame: opts.frame } : {}),
+    ...(opts.budget !== undefined ? { budget: opts.budget } : {}),
+    llmProvider: opts.llmProvider ?? new ReplayOnlyLLMProvider(recordedDefaultModel(recorded)),
+    llmCache: opts.llmCache ?? LLMCache.fromEvents(recorded),
+    ...(opts.tools !== undefined ? { tools: opts.tools } : {}),
+    toolCache: opts.toolCache ?? ToolCache.fromEvents(recorded),
+  });
   // Replay seed events into the new graph as live events so the
   // listener queues them and dispatch runs.
   for (const seed of seeds) {
@@ -295,11 +345,13 @@ export class Runtime {
     });
     this.graph.emit(goalEvent);
     await this.drain();
+    await this.graph.flushStore();
   }
 
   /** Alias for {@link drain} — drives the queue until idle or budget exhausted. */
   async runUntilIdle(): Promise<void> {
     await this.drain();
+    await this.graph.flushStore();
   }
 
   /** Drive the queue until no behaviors match a remaining event or budget runs out. */
@@ -310,14 +362,15 @@ export class Runtime {
         // No queued events but delayed entries exist. Bump the tick so
         // entries scheduled at "0 from now" fire when the queue is
         // already empty; otherwise idle out.
-        if (!this.fireDueDelayed()) break;
+        if (!(await this.fireDueDelayed())) break;
         continue;
       }
       if (!this.budget.remaining()) {
         this.emitBudgetExhausted();
         return;
       }
-      const event = this.queue.shift()!;
+      const event = this.queue.shift();
+      if (event === undefined) continue;
       this.budget.consume("maxEvents");
       this.tick += 1;
       await this.dispatch(event);
@@ -325,11 +378,11 @@ export class Runtime {
       await this.drainDueDelayed();
     }
     if (!this.exhausted) this.emitIdle();
+    await this.graph.flushStore();
   }
 
   private async dispatch(event: Event): Promise<void> {
-    for (let i = 0; i < this.behaviors.length; i++) {
-      const behavior = this.behaviors[i]!;
+    for (const [i, behavior] of this.behaviors.entries()) {
       if (!this.matchesEventGate(behavior, event)) continue;
       if (!this.budget.remaining()) {
         this.emitBudgetExhausted();
@@ -383,11 +436,7 @@ export class Runtime {
     return true;
   }
 
-  private buildCtx(
-    behavior: AnyBehavior,
-    event: Event,
-    matches: MatchHandle[],
-  ): RuntimeContext {
+  private buildCtx(behavior: AnyBehavior, event: Event, matches: MatchHandle[]): RuntimeContext {
     const view: View = buildView(behavior, event, this.graph);
     const self = this;
     return {
@@ -487,11 +536,7 @@ export class Runtime {
       this.budget.consume("maxBehaviorCalls");
       try {
         await behavior.handler(relation, event, this.graph, ctx);
-        this.emitInfrastructureEvent(
-          "behavior.completed",
-          { behavior: behavior.name },
-          started,
-        );
+        this.emitInfrastructureEvent("behavior.completed", { behavior: behavior.name }, started);
       } catch (err) {
         this.emitBehaviorFailed(behavior.name, err, started);
       }
@@ -549,11 +594,7 @@ export class Runtime {
           this.emitInfrastructureEvent(type, payload, causedBy),
       });
       await behavior.handler(event, this.graph, ctx, output);
-      this.emitInfrastructureEvent(
-        "behavior.completed",
-        { behavior: behavior.name },
-        started,
-      );
+      this.emitInfrastructureEvent("behavior.completed", { behavior: behavior.name }, started);
     } catch (err) {
       this.emitBehaviorFailed(behavior.name, err, started);
     }
@@ -583,11 +624,9 @@ export class Runtime {
   }
 
   private async drainDueDelayed(): Promise<void> {
-    while (this.fireDueDelayed()) {
-      // fireDueDelayed pops one due entry and fires it synchronously
-      // (it appends to the queue if the behavior emits). Loop until
-      // none are due at the current tick.
-      await Promise.resolve();
+    while (await this.fireDueDelayed()) {
+      // fireDueDelayed pops and awaits one due entry. Loop until none
+      // are due at the current tick.
     }
   }
 
@@ -595,10 +634,11 @@ export class Runtime {
    * Pop and fire one due delayed entry. Returns true if an entry fired,
    * false if none were due.
    */
-  private fireDueDelayed(): boolean {
+  private async fireDueDelayed(): Promise<boolean> {
     const dueIdx = this.delayed.findIndex((e) => e.fireAtTick <= this.tick);
     if (dueIdx === -1) return false;
-    const entry = this.delayed.splice(dueIdx, 1)[0]!;
+    const [entry] = this.delayed.splice(dueIdx, 1);
+    if (entry === undefined) return false;
     if (!this.budget.remaining()) {
       this.emitBudgetExhausted();
       return false;
@@ -618,9 +658,7 @@ export class Runtime {
       if (matches.length === 0) return true;
     }
     if (matches.length > 0) this.emitPatternMatched(behavior, ev, matches);
-    // Fire-and-defer: do not await here (we're in a sync loop). Errors
-    // are reported via behavior.failed events.
-    void this.fireOne(behavior, ev, matches);
+    await this.fireOne(behavior, ev, matches);
     return true;
   }
 
@@ -644,11 +682,7 @@ export class Runtime {
     );
   }
 
-  private emitPatternMatched(
-    behavior: AnyBehavior,
-    event: Event,
-    matches: MatchHandle[],
-  ): void {
+  private emitPatternMatched(behavior: AnyBehavior, event: Event, matches: MatchHandle[]): void {
     this.emitInfrastructureEvent(
       "pattern.matched",
       {
@@ -749,6 +783,10 @@ export class Runtime {
       ...(opts.behaviors !== undefined ? { behaviors: opts.behaviors } : {}),
       ...(opts.frame !== undefined ? { frame: opts.frame } : {}),
       ...(opts.budget !== undefined ? { budget: opts.budget } : {}),
+      ...(opts.llmProvider !== undefined ? { llmProvider: opts.llmProvider } : {}),
+      ...(opts.llmCache !== undefined ? { llmCache: opts.llmCache } : {}),
+      ...(opts.tools !== undefined ? { tools: opts.tools } : {}),
+      ...(opts.toolCache !== undefined ? { toolCache: opts.toolCache } : {}),
     });
 
     // Requeue events whose behaviors never fired during the recording
@@ -770,7 +808,14 @@ export class Runtime {
     }
 
     if (opts.strict === true) {
-      await verifyReplay(events, opts.behaviors ?? [...getRegistry()]);
+      await verifyReplay(events, opts.behaviors ?? [...getRegistry()], {
+        ...(opts.frame !== undefined ? { frame: opts.frame } : {}),
+        ...(opts.budget !== undefined ? { budget: opts.budget } : {}),
+        ...(opts.llmProvider !== undefined ? { llmProvider: opts.llmProvider } : {}),
+        ...(opts.llmCache !== undefined ? { llmCache: opts.llmCache } : {}),
+        ...(opts.tools !== undefined ? { tools: opts.tools } : {}),
+        ...(opts.toolCache !== undefined ? { toolCache: opts.toolCache } : {}),
+      });
     }
 
     return runtime;
@@ -803,7 +848,8 @@ export class Runtime {
         {
           whatFailed: `fork() requires an event id that exists in this runtime's event log. '${atEventId}' is not present.`,
           why: "The fork point identifies the prefix to copy into the new run. An unknown event id means either a typo or referencing an id from a different run.",
-          howToFix: `Pick an event id from \`runtime.graph.events\`. Check status() or the trace to find the right fork point.`,
+          howToFix:
+            "Pick an event id from `runtime.graph.events`. Check status() or the trace to find the right fork point.",
           context: { at_event_id: atEventId, run_id: this.graph.runId },
         },
       );

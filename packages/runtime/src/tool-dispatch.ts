@@ -21,7 +21,9 @@ function stableJSON(value: unknown): string {
     return `[${value.map(stableJSON).join(",")}]`;
   }
   const keys = Object.keys(value as Record<string, unknown>).sort();
-  const parts = keys.map((k) => `${JSON.stringify(k)}:${stableJSON((value as Record<string, unknown>)[k])}`);
+  const parts = keys.map(
+    (k) => `${JSON.stringify(k)}:${stableJSON((value as Record<string, unknown>)[k])}`,
+  );
   return `{${parts.join(",")}}`;
 }
 
@@ -49,11 +51,14 @@ export class ToolCache {
       if (e.type !== "tool.responded") continue;
       const hash = e.payload.args_hash as string | undefined;
       if (hash === undefined) continue;
-      if (e.payload.error !== undefined && e.payload.error !== null) continue;
-      cache.set(hash, {
+      const result: ToolResult = {
         output: e.payload.output,
         costUsd: (e.payload.cost_usd as number | undefined) ?? 0,
-      });
+      };
+      if (e.payload.error !== undefined) {
+        result.error = e.payload.error as NonNullable<ToolResult["error"]>;
+      }
+      cache.set(hash, result);
     }
     return cache;
   }
@@ -83,7 +88,7 @@ export interface ToolDispatchResult {
 
 export async function dispatchTool(opts: ToolDispatchOptions): Promise<ToolDispatchResult> {
   const argsHash = hashArgs(opts.tool.name, opts.args);
-  const cached = opts.tool.deterministic ? opts.cache?.get(argsHash) ?? null : null;
+  const cached = opts.cache?.get(argsHash) ?? null;
 
   const requested = opts.graph.emit(
     makeEvent({

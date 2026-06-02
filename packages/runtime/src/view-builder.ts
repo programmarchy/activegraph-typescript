@@ -15,8 +15,11 @@ export function buildView(behavior: AnyBehavior, event: Event, graph: Graph): Vi
   const spec: ViewSpec | null = behavior.viewSpec;
   const aroundId = spec?.around !== undefined ? resolveEventPath(spec.around, event) : null;
   const depth = spec?.depth ?? 1;
-  const recent = spec?.recentEvents ?? DEFAULT_RECENT_EVENTS;
-  const types = spec?.types ?? null;
+  const legacySpec = spec as
+    | (ViewSpec & { recent_events?: number; include_types?: string[] })
+    | null;
+  const recent = spec?.recentEvents ?? legacySpec?.recent_events ?? DEFAULT_RECENT_EVENTS;
+  const types = spec?.types ?? legacySpec?.include_types ?? null;
 
   let objs = graph.allObjects();
   let rels = graph.allRelations();
@@ -37,10 +40,9 @@ export function buildView(behavior: AnyBehavior, event: Event, graph: Graph): Vi
 }
 
 export function resolveEventPath(expr: string, event: Event): string | null {
-  // Supports simple expressions like `payload.object.id`. The Python
-  // runtime accepts a few more shapes (jq-style), but `payload.x.y` is
-  // the only one used by every shipped pack.
-  const path = expr.split(".");
+  // Supports both TS shorthand (`payload.object.id`) and the Python/docs
+  // spelling (`event.payload.object.id`).
+  const path = expr.startsWith("event.") ? expr.slice("event.".length).split(".") : expr.split(".");
   let cur: unknown = event;
   for (const seg of path) {
     if (cur === null || cur === undefined) return null;

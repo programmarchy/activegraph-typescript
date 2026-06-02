@@ -31,9 +31,9 @@ describe("activateAfter scheduler", () => {
 
     const types = g.events.map((e) => e.type);
     expect(types).toContain("behavior.scheduled");
-    const scheduled = g.events.find((e) => e.type === "behavior.scheduled")!;
-    expect(scheduled.payload.behavior).toBe("delayed");
-    expect(Number(scheduled.payload.activate_after)).toBe(2);
+    const scheduled = g.events.find((e) => e.type === "behavior.scheduled");
+    expect(scheduled?.payload.behavior).toBe("delayed");
+    expect(Number(scheduled?.payload.activate_after)).toBe(2);
   });
 
   it("fires after enough ticks elapse (with seed behavior pushing noise events)", async () => {
@@ -66,8 +66,35 @@ describe("activateAfter scheduler", () => {
     expect(fired).toEqual(["task#1"]);
     const scheds = g.events.filter((e) => e.type === "behavior.scheduled");
     expect(scheds).toHaveLength(1);
-    expect(scheds[0]!.payload.behavior).toBe("nag");
-    expect(scheds[0]!.payload.activate_after).toBe(2);
+    expect(scheds[0]?.payload.behavior).toBe("nag");
+    expect(scheds[0]?.payload.activate_after).toBe(2);
+  });
+
+  it("awaits async delayed handlers before emitting runtime.idle", async () => {
+    defineBehavior({
+      name: "seed",
+      on: ["goal.created"],
+      handler: (_e, graph) => {
+        graph.addObject("task", { title: "t" });
+        graph.addObject("noise", {});
+      },
+    });
+    defineBehavior({
+      name: "delayed-async",
+      on: ["object.created"],
+      where: { "object.type": "task" },
+      activateAfter: 1,
+      handler: async (_event, graph) => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        graph.addObject("marker", {});
+      },
+    });
+
+    const g = newGraph();
+    await new Runtime(g).runGoal("g");
+
+    expect(g.allObjects().some((o) => o.type === "marker")).toBe(true);
+    expect(g.events.at(-1)?.type).toBe("runtime.idle");
   });
 
   it("re-checks where= at fire time (stale match silently skips)", async () => {

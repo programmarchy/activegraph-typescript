@@ -6,11 +6,7 @@ import { describe, expect, it } from "vitest";
 import { Graph } from "@activegraph/core";
 import { PackSchemaViolation, loadPack } from "@activegraph/packs";
 
-import {
-  ClaimSchema,
-  CompanySchema,
-  diligencePack,
-} from "../src/index.js";
+import { ClaimSchema, CompanySchema, diligencePack } from "../src/index.js";
 
 describe("diligencePack metadata", () => {
   it("has 8 object types and 6 relation types", () => {
@@ -31,6 +27,20 @@ describe("diligencePack metadata", () => {
       "mitigates",
       "references",
       "supports",
+    ]);
+    expect(diligencePack.behaviors.map((b) => b.name).sort()).toEqual([
+      "company_planner",
+      "contradiction_detector",
+      "document_researcher",
+      "evidence_linker",
+      "memo_synthesizer",
+      "question_generator",
+      "risk_identifier",
+    ]);
+    expect(diligencePack.tools.map((t) => t.name).sort()).toEqual([
+      "fetch_company_docs",
+      "search_filings",
+      "summarize_document",
     ]);
   });
 
@@ -56,9 +66,7 @@ describe("diligencePack schemas", () => {
   });
 
   it("Claim schema rejects out-of-range confidence", () => {
-    expect(() =>
-      ClaimSchema.parse({ text: "x", confidence: 1.5, company_id: "c#1" }),
-    ).toThrow();
+    expect(() => ClaimSchema.parse({ text: "x", confidence: 1.5, company_id: "c#1" })).toThrow();
   });
 });
 
@@ -70,9 +78,9 @@ describe("diligencePack on a Graph", () => {
     expect(() =>
       g.addObject("claim", { text: "x", confidence: 0.9, company_id: "c#1" }),
     ).not.toThrow();
-    expect(() =>
-      g.addObject("claim", { text: "x", confidence: 2.0, company_id: "c#1" }),
-    ).toThrow(PackSchemaViolation);
+    expect(() => g.addObject("claim", { text: "x", confidence: 2.0, company_id: "c#1" })).toThrow(
+      PackSchemaViolation,
+    );
   });
 
   it("enforces supports source/target rules", () => {
@@ -89,8 +97,6 @@ describe("diligencePack on a Graph", () => {
       claim_id: claim.id,
     });
     expect(() => g.addRelation(evidence.id, claim.id, "supports")).not.toThrow();
-    expect(() => g.addRelation(claim.id, evidence.id, "supports")).toThrow(
-      PackSchemaViolation,
-    );
+    expect(() => g.addRelation(claim.id, evidence.id, "supports")).toThrow(PackSchemaViolation);
   });
 });

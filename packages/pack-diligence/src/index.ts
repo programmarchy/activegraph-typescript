@@ -87,6 +87,22 @@ export const MemoSchema = z.object({
   risks: z.array(z.record(z.string(), z.unknown())),
 });
 
+export const diligenceBehaviors = [
+  { name: "company_planner" },
+  { name: "question_generator" },
+  { name: "document_researcher" },
+  { name: "evidence_linker" },
+  { name: "contradiction_detector" },
+  { name: "risk_identifier" },
+  { name: "memo_synthesizer" },
+] as const;
+
+export const diligenceTools = [
+  { name: "fetch_company_docs" },
+  { name: "search_filings" },
+  { name: "summarize_document" },
+] as const;
+
 // --- the pack -----------------------------------------------------------
 
 export const diligencePack: Pack = definePack({
@@ -120,6 +136,8 @@ export const diligencePack: Pack = definePack({
     },
     { name: "mitigates", allowedSources: ["evidence", "claim"], allowedTargets: ["risk"] },
   ],
+  behaviors: diligenceBehaviors,
+  tools: diligenceTools,
   prompts: [
     loadPromptSync("document_researcher"),
     loadPromptSync("memo_synthesizer"),

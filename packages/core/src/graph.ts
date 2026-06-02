@@ -11,10 +11,10 @@
 
 import type { Clock } from "./clock.js";
 import { WallClock } from "./clock.js";
+import { ExecutionError, internalBugFields } from "./errors.js";
 import type { Event, EventPayload } from "./event.js";
 import { makeEvent } from "./event.js";
 import { IDGen } from "./ids.js";
-import { internalBugFields, ExecutionError } from "./errors.js";
 import type { Patch, PatchOp } from "./patch.js";
 import { patchFromJSON, patchToJSON } from "./patch.js";
 
@@ -92,6 +92,7 @@ export class Graph {
   /** @internal */ readonly _listeners: EventListener[] = [];
   /** @internal */ readonly _replayedIds = new Set<string>();
   /** @internal */ _store: EventStoreSink | null = null;
+  /** @internal */ readonly _pendingStoreAppends: Promise<void>[] = [];
 
   /** @internal */ packObjectValidator: ObjectValidator | null = null;
   /** @internal */ packRelationValidator: RelationValidator | null = null;
@@ -241,10 +242,20 @@ export class Graph {
     this._events.push(event);
     applyEvent(this, event);
     if (this._store !== null) {
-      void this._store.append(event);
+      const appended = this._store.append(event);
+      if (isPromiseLike(appended)) {
+        this._pendingStoreAppends.push(Promise.resolve(appended));
+      }
     }
     for (const listener of this._listeners) listener(event);
     return event;
+  }
+
+  async flushStore(): Promise<void> {
+    while (this._pendingStoreAppends.length > 0) {
+      const pending = this._pendingStoreAppends.splice(0);
+      await Promise.all(pending);
+    }
   }
 
   /** @internal — replay path: project without persisting or notifying. */
@@ -256,11 +267,7 @@ export class Graph {
 
   // ---------- convenience builders ----------
 
-  addObject(
-    type: string,
-    data: Record<string, unknown>,
-    meta: MutationMeta = {},
-  ): ObjectNode {
+  addObject(type: string, data: Record<string, unknown>, meta: MutationMeta = {}): ObjectNode {
     const objId = this.ids.object(type);
     let clean = stripProvenance(structuredClone(data));
     if (this.packObjectValidator !== null) {
@@ -288,7 +295,10 @@ export class Graph {
         timestamp: this.clock.now(),
       }),
     );
-    return this._objects.get(objId)!;
+    const created = this._objects.get(objId);
+    if (created === undefined)
+      throw new Error(`internal error: object was not projected: ${objId}`);
+    return created;
   }
 
   addRelation(
@@ -330,7 +340,11 @@ export class Graph {
         timestamp: this.clock.now(),
       }),
     );
-    return this._relations.get(relId)!;
+    const created = this._relations.get(relId);
+    if (created === undefined) {
+      throw new Error(`internal error: relation was not projected: ${relId}`);
+    }
+    return created;
   }
 
   removeRelation(relationId: string, meta: MutationMeta = {}): void {
@@ -363,11 +377,7 @@ export class Graph {
     );
   }
 
-  patchObject(
-    target: string,
-    updates: Record<string, unknown>,
-    meta: MutationMeta = {},
-  ): Patch {
+  patchObject(target: string, updates: Record<string, unknown>, meta: MutationMeta = {}): Patch {
     const obj = this._objects.get(target);
     if (obj === undefined) {
       throw new Error(`unknown object: ${target}`);
@@ -402,7 +412,11 @@ export class Graph {
         timestamp: this.clock.now(),
       }),
     );
-    return this._patches.get(patch.id)!;
+    const applied = this._patches.get(patch.id);
+    if (applied === undefined) {
+      throw new Error(`internal error: patch was not projected: ${patch.id}`);
+    }
+    return applied;
   }
 
   proposePatch(
@@ -411,7 +425,8 @@ export class Graph {
     value: Record<string, unknown>,
     meta: MutationMeta & { proposedBy: string },
   ): Patch {
-    const normalized = target.includes(":") ? target.split(":", 2)[1]! : target;
+    const [, objectId] = target.split(":", 2);
+    const normalized = target.includes(":") && objectId !== undefined ? objectId : target;
     const obj = this._objects.get(normalized);
     const expectedVersion = obj?.version ?? 0;
     const clean = stripProvenance(structuredClone(value));
@@ -439,7 +454,11 @@ export class Graph {
         timestamp: this.clock.now(),
       }),
     );
-    return this._patches.get(patch.id)!;
+    const proposed = this._patches.get(patch.id);
+    if (proposed === undefined) {
+      throw new Error(`internal error: patch was not projected: ${patch.id}`);
+    }
+    return proposed;
   }
 
   applyPatch(
@@ -639,6 +658,15 @@ function stripProvenance(data: Record<string, unknown>): Record<string, unknown>
     if (k !== "provenance") out[k] = v;
   }
   return out;
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<void> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
 }
 
 function diffFields(

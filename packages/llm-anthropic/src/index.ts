@@ -3,7 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import { MissingOptionalDependency } from "@activegraph/core";
-import type { LLMProvider, LLMRequest, LLMResponse } from "@activegraph/llm";
+import type { LLMMessage, LLMProvider, LLMRequest, LLMResponse } from "@activegraph/llm";
 
 export interface AnthropicProviderOptions {
   /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var. */
@@ -45,12 +45,7 @@ export class AnthropicProvider implements LLMProvider {
     // The Anthropic API splits system from user/assistant. We pull the first
     // system message out if present and pass it as the top-level `system` arg.
     const systems = request.messages.filter((m) => m.role === "system").map((m) => m.content);
-    const messages = request.messages
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
+    const messages = request.messages.filter((m) => m.role !== "system").map(toAnthropicMessage);
 
     const t0 = performance.now();
     const response = await this.client.messages.create({
@@ -59,6 +54,15 @@ export class AnthropicProvider implements LLMProvider {
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.topP !== undefined ? { top_p: request.topP } : {}),
       ...(systems.length > 0 ? { system: systems.join("\n\n") } : {}),
+      ...(request.tools !== undefined && request.tools.length > 0
+        ? {
+            tools: request.tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description ?? "",
+              input_schema: { type: "object", properties: {} },
+            })),
+          }
+        : {}),
       messages,
     });
     const latencySeconds = (performance.now() - t0) / 1000;
@@ -67,8 +71,9 @@ export class AnthropicProvider implements LLMProvider {
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
+    const toolCalls = extractToolCalls(response.content);
 
-    return {
+    const result: LLMResponse = {
       text,
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
@@ -77,6 +82,8 @@ export class AnthropicProvider implements LLMProvider {
       latencySeconds,
       raw: response as unknown as Record<string, unknown>,
     };
+    if (toolCalls !== undefined) result.toolCalls = toolCalls;
+    return result;
   }
 
   countTokens(text: string, _model?: string): number {
@@ -86,4 +93,49 @@ export class AnthropicProvider implements LLMProvider {
     // estimate is loud (`tokens_in~N` in the trace) so callers know.
     return Math.ceil(text.length / 4);
   }
+}
+
+function toAnthropicMessage(m: LLMMessage): Anthropic.Messages.MessageParam {
+  if (m.role === "tool") {
+    return {
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: m.toolResult?.toolCallId ?? "",
+          content: m.content,
+        },
+      ],
+    };
+  }
+  if (m.role === "assistant" && m.toolCalls !== undefined && m.toolCalls.length > 0) {
+    const content: Anthropic.Messages.ContentBlockParam[] = [];
+    if (m.content !== "") content.push({ type: "text", text: m.content });
+    for (const call of m.toolCalls) {
+      content.push({
+        type: "tool_use",
+        id: call.id,
+        name: call.name,
+        input: call.args,
+      });
+    }
+    return { role: "assistant", content };
+  }
+  return { role: m.role === "assistant" ? "assistant" : "user", content: m.content };
+}
+
+function extractToolCalls(
+  content: Anthropic.Message["content"],
+): NonNullable<LLMResponse["toolCalls"]> | undefined {
+  const calls = content
+    .filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use")
+    .map((block) => ({
+      id: block.id,
+      name: block.name,
+      args:
+        block.input !== null && typeof block.input === "object" && !Array.isArray(block.input)
+          ? (block.input as Record<string, unknown>)
+          : { value: block.input },
+    }));
+  return calls.length > 0 ? calls : undefined;
 }

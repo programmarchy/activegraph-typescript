@@ -13,6 +13,7 @@
 export * from "@activegraph/core";
 export * from "@activegraph/runtime";
 export * from "@activegraph/store-memory";
+export * from "@activegraph/store-sqlite";
 export * from "@activegraph/packs";
 export { diligencePack } from "@activegraph/pack-diligence";
 export { main as cli } from "@activegraph/cli";

@@ -7,6 +7,12 @@
   },
   "include": ["src/**/*.ts"],
   "references": [
-    { "path": "../core" },    { "path": "../runtime" },    { "path": "../store-memory" },    { "path": "../packs" },    { "path": "../pack-diligence" },    { "path": "../cli" }
+    { "path": "../core" },
+    { "path": "../runtime" },
+    { "path": "../store-memory" },
+    { "path": "../store-sqlite" },
+    { "path": "../packs" },
+    { "path": "../pack-diligence" },
+    { "path": "../cli" }
   ]
 }

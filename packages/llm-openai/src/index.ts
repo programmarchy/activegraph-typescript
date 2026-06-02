@@ -4,7 +4,9 @@
 import { encode } from "gpt-tokenizer";
 import OpenAI from "openai";
 import type {
+  ChatCompletionMessageFunctionToolCall,
   ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
   ChatCompletionToolMessageParam,
 } from "openai/resources/chat/completions";
 
@@ -55,13 +57,26 @@ export class OpenAIProvider implements LLMProvider {
       max_tokens: request.maxTokens ?? 4096,
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
       ...(request.topP !== undefined ? { top_p: request.topP } : {}),
+      ...(request.tools !== undefined && request.tools.length > 0
+        ? {
+            tools: request.tools.map((tool) => ({
+              type: "function" as const,
+              function: {
+                name: tool.name,
+                description: tool.description ?? "",
+                parameters: { type: "object", properties: {}, additionalProperties: true },
+              },
+            })),
+          }
+        : {}),
     });
     const latencySeconds = (performance.now() - t0) / 1000;
 
     const text = response.choices[0]?.message?.content ?? "";
     const usage = response.usage;
+    const toolCalls = extractToolCalls(response.choices[0]?.message?.tool_calls);
 
-    return {
+    const result: LLMResponse = {
       text,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
@@ -69,10 +84,42 @@ export class OpenAIProvider implements LLMProvider {
       latencySeconds,
       raw: response as unknown as Record<string, unknown>,
     };
+    if (toolCalls !== undefined) result.toolCalls = toolCalls;
+    return result;
   }
 
   countTokens(text: string, _model?: string): number {
     return encode(text).length;
+  }
+}
+
+function extractToolCalls(
+  calls: ChatCompletionMessageToolCall[] | undefined,
+): NonNullable<LLMResponse["toolCalls"]> | undefined {
+  if (calls === undefined) return undefined;
+  const functionCalls = calls.filter(isFunctionToolCall);
+  if (functionCalls.length === 0) return undefined;
+  return functionCalls.map((call) => ({
+    id: call.id,
+    name: call.function.name,
+    args: parseToolArgs(call.function.arguments),
+  }));
+}
+
+function isFunctionToolCall(
+  call: ChatCompletionMessageToolCall,
+): call is ChatCompletionMessageFunctionToolCall {
+  return call.type === "function";
+}
+
+function parseToolArgs(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : { value: parsed };
+  } catch {
+    return { _raw: raw };
   }
 }
 
@@ -102,4 +149,3 @@ function toOpenAIMessage(m: LLMMessage): ChatCompletionMessageParam {
   }
   return { role: m.role, content: m.content };
 }
-

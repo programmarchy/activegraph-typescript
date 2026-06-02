@@ -1,11 +1,11 @@
 # Active Graph — TypeScript runtime
 
-The TypeScript implementation of [Active Graph](../python/README.md).
+The TypeScript implementation of [Active Graph](https://github.com/yoheinakajima/activegraph).
 An event-sourced reactive graph runtime for long-running, auditable,
 agentic systems.
 
-**Status:** Phase 0 — workspace bootstrap. No package source yet. The
-port plan lives at [`../TS-PORT-PLAN.md`](../TS-PORT-PLAN.md).
+**Status:** active TypeScript port with workspace packages, source, and
+tests. The port plan lives at [`PORT-PLAN.md`](PORT-PLAN.md).
 
 ## Layout
 
@@ -53,9 +53,3 @@ typescript/
     pnpm test                 # vitest run
     pnpm build                # build every package
     pnpm lint                 # biome check
-
-## Next steps
-
-See [`../TS-PORT-PLAN.md`](../TS-PORT-PLAN.md). Phase 1 ports
-`@activegraph/core` (the pure data layer). Each subsequent phase adds
-one more package family.

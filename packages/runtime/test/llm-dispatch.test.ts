@@ -8,8 +8,8 @@ import {
   type LLMProvider,
   type LLMRequest,
   type LLMResponse,
-  RecordedLLMProvider,
   type RecordedExchange,
+  RecordedLLMProvider,
 } from "@activegraph/llm";
 import { InMemoryEventStore } from "@activegraph/store-memory";
 
@@ -81,7 +81,8 @@ describe("assemblePrompt", () => {
     });
     const g = newGraph();
     g.addObject("task", { title: "A" });
-    const event = g.events[0]!;
+    const event = g.events[0];
+    if (event === undefined) throw new Error("expected object.created event");
     const a = assemblePrompt({
       behavior,
       event,
@@ -133,8 +134,8 @@ describe("Runtime LLM dispatch", () => {
     expect(types).toContain("llm.requested");
     expect(types).toContain("llm.responded");
 
-    const responded = g.events.find((e) => e.type === "llm.responded")!;
-    expect(responded.payload.text).toBe("the summary");
+    const responded = g.events.find((e) => e.type === "llm.responded");
+    expect(responded?.payload.text).toBe("the summary");
     expect(received).toBe("the summary");
   });
 
@@ -180,8 +181,8 @@ describe("Runtime LLM dispatch", () => {
 
     const types = g.events.map((e) => e.type);
     expect(types).toContain("behavior.failed");
-    const failed = g.events.find((e) => e.type === "behavior.failed")!;
-    expect(String(failed.payload.message)).toContain("no llmProvider was configured");
+    const failed = g.events.find((e) => e.type === "behavior.failed");
+    expect(String(failed?.payload.message)).toContain("no llmProvider was configured");
   });
 
   it("strict-replay survives an LLM run via cache", async () => {
@@ -206,6 +207,10 @@ describe("Runtime LLM dispatch", () => {
 
     // Permissive replay always succeeds — no provider call needed.
     await expect(Runtime.load(store)).resolves.toBeDefined();
+
+    // Strict replay also succeeds without a live provider because
+    // Runtime.load rebuilds the LLM cache from recorded llm.responded events.
+    await expect(Runtime.load(store, { strict: true })).resolves.toBeDefined();
 
     // LLMCache.fromEvents reads the recorded llm.responded events.
     const cache = LLMCache.fromEvents(g1.events);
