@@ -33,10 +33,10 @@ importers:
         specifier: workspace:^
         version: link:../core
       '@activegraph/observability':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../observability
       '@activegraph/packs':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../packs
       '@activegraph/runtime':
         specifier: workspace:^
@@ -45,7 +45,7 @@ importers:
         specifier: workspace:^
         version: link:../store-memory
       '@activegraph/store-sqlite':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../store-sqlite
       commander:
         specifier: ^15.0.0
@@ -67,6 +67,7 @@ importers:
       '@activegraph/llm':
         specifier: workspace:^
         version: link:../llm
+    devDependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.100.1
         version: 0.100.1(zod@4.4.3)
@@ -82,6 +83,7 @@ importers:
       gpt-tokenizer:
         specifier: ^3.4.0
         version: 3.4.0
+    devDependencies:
       openai:
         specifier: ^6.39.1
         version: 6.39.1(zod@4.4.3)
@@ -92,7 +94,7 @@ importers:
         specifier: workspace:^
         version: link:../core
       '@activegraph/store-memory':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../store-memory
       pino:
         specifier: ^10.3.1
@@ -128,23 +130,23 @@ importers:
         specifier: workspace:^
         version: link:../core
       '@activegraph/llm':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../llm
       '@activegraph/tools':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../tools
     devDependencies:
       '@activegraph/pack-diligence':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../pack-diligence
       '@activegraph/packs':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../packs
       '@activegraph/store-memory':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../store-memory
       '@activegraph/store-sqlite':
-        specifier: workspace:1.0.5-alpha.0
+        specifier: workspace:1.0.5
         version: link:../store-sqlite
       zod:
         specifier: ^4.4.3
@@ -164,13 +166,13 @@ importers:
       '@activegraph/store-memory':
         specifier: workspace:^
         version: link:../store-memory
-      pg:
-        specifier: ^8.21.0
-        version: 8.21.0
     devDependencies:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      pg:
+        specifier: ^8.21.0
+        version: 8.21.0
 
   packages/store-sqlite:
     dependencies:
@@ -180,13 +182,13 @@ importers:
       '@activegraph/store-memory':
         specifier: workspace:^
         version: link:../store-memory
-      better-sqlite3:
-        specifier: ^12.10.0
-        version: 12.10.0
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
+      better-sqlite3:
+        specifier: ^12.10.0
+        version: 12.10.0
 
   packages/tools:
     dependencies:
@@ -214,6 +216,9 @@ importers:
       '@activegraph/store-memory':
         specifier: workspace:^
         version: link:../store-memory
+      '@activegraph/store-sqlite':
+        specifier: workspace:^
+        version: link:../store-sqlite
 
 packages:
 

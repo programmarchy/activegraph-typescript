@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -30,10 +32,37 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/store-memory": "workspace:^",
-    "pg": "^8.21.0"
+    "@activegraph/store-memory": "workspace:^"
+  },
+  "peerDependencies": {
+    "pg": ">=8.0.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
-  }
+    "@types/pg": "^8.20.0",
+    "pg": "^8.21.0"
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/store-postgres"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/store-postgres#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm",
+    "postgres",
+    "pg"
+  ]
 }

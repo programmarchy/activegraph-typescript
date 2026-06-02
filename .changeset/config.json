@@ -3,7 +3,11 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [["@activegraph/*", "activegraph"]],
+  "linked": [
+    [
+      "@activegraph/*"
+    ]
+  ],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",

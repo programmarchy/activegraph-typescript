@@ -1,7 +1,7 @@
 {
   "name": "@activegraph/pack-diligence",
   "version": "1.0.5",
-  "description": "The Diligence reference pack: 8 object types, 7 behaviors, 3 tools, recorded fixtures.",
+  "description": "The Diligence reference pack: 8 object types, 7 behavior descriptors, 3 tool descriptors, prompts.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b && node -e \"import('node:fs/promises').then(async fs => { await fs.mkdir('dist/prompts', { recursive: true }); const files = await fs.readdir('src/prompts'); for (const f of files) if (f.endsWith('.md')) await fs.copyFile('src/prompts/' + f, 'dist/prompts/' + f); })\"",
@@ -33,5 +35,29 @@
     "@activegraph/packs": "workspace:^",
     "@activegraph/tools": "workspace:^",
     "zod": "^4.4.3"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/pack-diligence"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/pack-diligence#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm",
+    "packs",
+    "diligence"
+  ]
 }

@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -30,7 +32,36 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/llm": "workspace:^",
+    "@activegraph/llm": "workspace:^"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.100.0"
+  },
+  "devDependencies": {
     "@anthropic-ai/sdk": "^0.100.1"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/llm-anthropic"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/llm-anthropic#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm",
+    "anthropic",
+    "claude"
+  ]
 }

@@ -16,7 +16,9 @@
     "dist",
     "src",
     "bin",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "bin": {
     "activegraph": "./bin/activegraph.js"
@@ -40,5 +42,28 @@
     "@activegraph/store-memory": "workspace:^",
     "@activegraph/store-sqlite": "workspace:1.0.5",
     "commander": "^15.0.0"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm",
+    "cli"
+  ]
 }

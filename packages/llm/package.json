@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -30,5 +32,27 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/llm"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/llm#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm"
+  ]
 }

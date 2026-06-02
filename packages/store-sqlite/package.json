@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -30,10 +32,37 @@
   },
   "dependencies": {
     "@activegraph/core": "workspace:^",
-    "@activegraph/store-memory": "workspace:^",
-    "better-sqlite3": "^12.10.0"
+    "@activegraph/store-memory": "workspace:^"
+  },
+  "peerDependencies": {
+    "better-sqlite3": ">=12.0.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13"
-  }
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.10.0"
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/store-sqlite"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/store-sqlite#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm",
+    "sqlite",
+    "better-sqlite3"
+  ]
 }

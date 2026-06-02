@@ -1,7 +1,7 @@
 {
-  "name": "activegraph",
+  "name": "@activegraph/sdk",
   "version": "1.0.5",
-  "description": "Active Graph: event-sourced reactive graph runtime. Umbrella package re-exporting core+runtime+store-memory+store-sqlite+packs+pack-diligence+cli.",
+  "description": "Active Graph SDK: the default install bundle re-exporting core + runtime + in-memory/SQLite stores + packs + Diligence pack + CLI.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -34,6 +36,29 @@
     "@activegraph/pack-diligence": "workspace:^",
     "@activegraph/packs": "workspace:^",
     "@activegraph/runtime": "workspace:^",
-    "@activegraph/store-memory": "workspace:^"
-  }
+    "@activegraph/store-memory": "workspace:^",
+    "@activegraph/store-sqlite": "workspace:^"
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/umbrella"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/umbrella#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm"
+  ]
 }

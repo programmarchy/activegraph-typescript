@@ -15,7 +15,9 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -31,7 +33,35 @@
   "dependencies": {
     "@activegraph/core": "workspace:^",
     "@activegraph/llm": "workspace:^",
-    "gpt-tokenizer": "^3.4.0",
+    "gpt-tokenizer": "^3.4.0"
+  },
+  "peerDependencies": {
+    "openai": ">=6.0.0"
+  },
+  "devDependencies": {
     "openai": "^6.39.1"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "programmarchy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/programmarchy/activegraph-typescript.git",
+    "directory": "packages/llm-openai"
+  },
+  "homepage": "https://github.com/programmarchy/activegraph-typescript/tree/main/packages/llm-openai#readme",
+  "bugs": {
+    "url": "https://github.com/programmarchy/activegraph-typescript/issues"
+  },
+  "keywords": [
+    "activegraph",
+    "active-graph",
+    "event-sourcing",
+    "reactive-graph",
+    "ai-agents",
+    "agentic",
+    "auditable",
+    "forkable",
+    "llm",
+    "openai"
+  ]
 }
